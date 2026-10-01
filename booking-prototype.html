@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>日文課預約系統（原型）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F1F3F7;--card:#FFFFFF;--ink:#1B2540;--ink2:#56627C;--line:#D8DDE6;
+  --ac:#2B4A8A;--acSoft:#E4EAF6;--onAc:#FFFFFF;--stamp:#C4322A;
+  --ok:#2C7A57;--warn:#8F5A0E;--warnSoft:#FBF0D9;--bad:#B3261E;
+  --serif:'Noto Serif TC','Hiragino Mincho ProN','Songti TC','PMingLiU',serif;
+  --sans:'Noto Sans TC','Hiragino Sans','PingFang TC','Microsoft JhengHei',system-ui,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#10141C;--card:#181D28;--ink:#E8EBF2;--ink2:#9AA4BA;--line:#2A3140;
+    --ac:#8FAEEF;--acSoft:#1F2A44;--onAc:#10141C;--stamp:#E5584E;
+    --ok:#6CC49A;--warn:#E8B45A;--warnSoft:#3A2F17;--bad:#F08A82;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10141C;--card:#181D28;--ink:#E8EBF2;--ink2:#9AA4BA;--line:#2A3140;
+  --ac:#8FAEEF;--acSoft:#1F2A44;--onAc:#10141C;--stamp:#E5584E;
+  --ok:#6CC49A;--warn:#E8B45A;--warnSoft:#3A2F17;--bad:#F08A82;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.65 var(--sans);-webkit-text-size-adjust:100%}
+h1,h2,h3{font-family:var(--serif);font-weight:700;margin:0;line-height:1.35}
+h2{font-size:22px;margin-bottom:16px}
+h3{font-size:17px;margin-bottom:10px}
+p{margin:0 0 10px}
+.muted{color:var(--ink2);font-size:13px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px 56px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0 14px;flex-wrap:wrap}
+.brand h1{font-size:24px;letter-spacing:.04em}
+.brand span{display:block;font-size:13px;color:var(--ink2)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:transparent;padding:8px 16px;cursor:pointer;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--ac);color:var(--onAc);font-weight:500}
+.proto{border:1px dashed var(--line);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--ink2);margin-bottom:22px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.proto button{background:none;border:0;color:var(--ac);cursor:pointer;padding:0;text-decoration:underline;font-size:13px}
+
+/* layout */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:24px;align-items:start}
+.layout.one{grid-template-columns:minmax(0,1fr)}
+@media (max-width:820px){.layout{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:22px}
+.side{position:sticky;top:12px}
+@media (max-width:820px){.side{position:static}}
+
+/* steps */
+.steps{list-style:none;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 22px;padding:0}
+.steps li{border-top:3px solid var(--line);padding-top:6px;font-size:13px;color:var(--ink2)}
+.steps li.cur{border-color:var(--ac);color:var(--ink);font-weight:700}
+.steps li.done{border-color:var(--ac)}
+.steps li.done span::before{content:"✓ "}
+
+/* buttons / fields */
+.btn{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:10px 18px;cursor:pointer;font-weight:500}
+.btn.primary{background:var(--ac);border-color:var(--ac);color:var(--onAc)}
+.btn.danger{border-color:var(--bad);color:var(--bad)}
+.btn.sm{padding:5px 12px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.lnk{background:none;border:0;color:var(--ac);cursor:pointer;text-decoration:underline;padding:4px;font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.actions{display:flex;gap:10px;justify-content:space-between;margin-top:22px;flex-wrap:wrap}
+.field{margin-bottom:16px}
+.field label{display:block;font-weight:500;margin-bottom:5px;font-size:14px}
+input[type=text],input[type=email],input[type=date],input[type=time],input[type=number],select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+textarea{min-height:84px;resize:vertical}
+.err{color:var(--bad);font-size:13px;margin-top:4px}
+
+/* courses */
+.courses{display:grid;gap:12px;margin-bottom:16px}
+.course{display:grid;grid-template-columns:1fr auto;gap:2px 16px;text-align:left;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:16px 18px;cursor:pointer}
+.course:hover{border-color:var(--ac)}
+.cn{font-family:var(--serif);font-weight:700;font-size:18px}
+.cd{grid-column:1;color:var(--ink2);font-size:14px}
+.cp{grid-row:1/3;grid-column:2;align-self:center;font-family:var(--serif);font-weight:700;font-size:20px;color:var(--ac)}
+
+/* dates + slots */
+.dates{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:14px}
+.date{flex:0 0 auto;width:66px;padding:8px 4px;text-align:center;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;line-height:1.35}
+.date b{display:block;font-size:16px}
+.date small{display:block;color:var(--ink2);font-size:12px}
+.date[aria-pressed="true"]{background:var(--ac);border-color:var(--ac);color:var(--onAc)}
+.date[aria-pressed="true"] small{color:var(--onAc);opacity:.85}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.slot{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:9px 6px;cursor:pointer;text-align:center;font-weight:500;line-height:1.3}
+.slot small{display:block;font-weight:400;font-size:12px;color:var(--ink2)}
+.slot[aria-pressed="true"]{background:var(--ac);border-color:var(--ac);color:var(--onAc)}
+.slot[aria-pressed="true"] small{color:var(--onAc);opacity:.85}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:28px 18px;text-align:center;color:var(--ink2)}
+
+/* summary / dl */
+dl.kv{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:14px}
+dl.kv dt{color:var(--ink2)}
+dl.kv dd{margin:0;word-break:break-word}
+.price{font-family:var(--serif);font-weight:700;font-size:22px;color:var(--ac)}
+
+/* payment */
+.hold{background:var(--warnSoft);color:var(--warn);border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:14px}
+.hold b{font-variant-numeric:tabular-nums}
+.methods{display:grid;gap:8px;margin-bottom:12px}
+.method{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:11px 14px;cursor:pointer}
+.method i{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);flex:none}
+.method[aria-pressed="true"]{border-color:var(--ac);background:var(--acSoft)}
+.method[aria-pressed="true"] i{border-color:var(--ac);background:radial-gradient(var(--ac) 45%,transparent 50%)}
+.notice{background:var(--acSoft);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--ink2);margin-bottom:14px}
+.fail{background:var(--card);border:1px solid var(--bad);color:var(--bad);border-radius:8px;padding:10px 14px;font-size:14px;margin-bottom:14px}
+
+/* done */
+.done{text-align:center;padding:10px 0 4px}
+.stamp{width:104px;height:104px;color:var(--stamp);transform:rotate(-6deg);animation:stampIn .55s cubic-bezier(.2,.9,.3,1.15) both;margin-bottom:6px}
+@keyframes stampIn{0%{transform:scale(1.9) rotate(-16deg);opacity:0}55%{transform:scale(.93) rotate(-5deg);opacity:1}100%{transform:scale(1) rotate(-6deg);opacity:1}}
+@media (prefers-reduced-motion:reduce){.stamp{animation:none}}
+.done dl.kv{text-align:left;max-width:420px;margin:18px auto}
+
+/* teacher */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto}
+.tabs button{border:0;background:none;padding:10px 16px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;margin-bottom:-1px;color:var(--ink2)}
+.tabs button[aria-selected="true"]{color:var(--ink);font-weight:700;border-color:var(--ac)}
+.stats{display:flex;gap:0;flex-wrap:wrap;margin-bottom:22px;background:var(--card);border:1px solid var(--line);border-radius:8px}
+.stat{flex:1 1 140px;padding:14px 18px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat b{display:block;font-family:var(--serif);font-size:24px;line-height:1.2}
+.stat span{font-size:13px;color:var(--ink2)}
+.wkhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+.wkscroll{overflow-x:auto}
+.week{display:grid;grid-template-columns:repeat(7,minmax(130px,1fr));gap:8px;min-width:920px}
+.day{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:170px}
+.day.today{border-color:var(--ac)}
+.dh{font-size:13px;color:var(--ink2);margin-bottom:8px;display:flex;justify-content:space-between}
+.dh b{color:var(--ink)}
+.chip{display:block;width:100%;text-align:left;border:1px solid transparent;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:13px;line-height:1.4;margin-bottom:6px}
+.chip small{display:block;opacity:.85}
+.st-confirmed{background:var(--ac);color:var(--onAc)}
+.st-pending{background:var(--warnSoft);color:var(--warn);border-color:var(--warn)}
+.st-completed{background:transparent;border-color:var(--line);color:var(--ink2)}
+.win{font-size:12px;color:var(--ink2);border:1px dashed var(--line);border-radius:4px;padding:3px 6px;margin-bottom:6px}
+.win.extra{border-color:var(--ac);color:var(--ac)}
+.off{font-size:12px;color:var(--bad);margin-bottom:6px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:12px}
+.rrow{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line)}
+.rrow:last-child{border-bottom:0}
+.rd{font-family:var(--serif);font-weight:700;padding-top:6px}
+.range{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.range input{width:116px}
+.exlist{list-style:none;margin:14px 0 0;padding:0}
+.exlist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+.hidden{display:none!important}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.filters button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 14px;cursor:pointer;font-size:13px}
+.filters button[aria-pressed="true"]{background:var(--ac);border-color:var(--ac);color:var(--onAc)}
+.blist{display:grid;gap:8px}
+.brow{display:grid;grid-template-columns:130px 1fr auto auto;gap:14px;align-items:center;text-align:left;width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;cursor:pointer}
+.brow.dim{opacity:.6}
+.brow small{color:var(--ink2);display:block}
+@media (max-width:640px){.brow{grid-template-columns:1fr auto}.brow .c3{display:none}}
+.badge{font-size:12px;border-radius:999px;padding:2px 10px;border:1px solid var(--line);white-space:nowrap}
+.badge.confirmed{background:var(--acSoft);color:var(--ac);border-color:transparent}
+.badge.pending{background:var(--warnSoft);color:var(--warn);border-color:transparent}
+.badge.completed{color:var(--ok);border-color:var(--ok)}
+.badge.cancelled,.badge.expired{color:var(--ink2)}
+.crow{display:grid;grid-template-columns:1fr 100px 130px;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.crow:last-child{border-bottom:0}
+@media (max-width:640px){.crow{grid-template-columns:1fr 1fr}.crow>:first-child{grid-column:1/-1}}
+
+/* modal + toast */
+.overlay{position:fixed;inset:0;background:rgba(10,15,30,.55);display:grid;place-items:center;padding:16px;z-index:20}
+.dialog{background:var(--card);border-radius:10px;max-width:470px;width:100%;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.35);max-height:92%;overflow:auto}
+.dialog h3{font-size:20px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:8px;font-size:14px;z-index:30;max-width:90%}
+.foot{margin-top:36px;font-size:12px;color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>日本語レッスン</h1>
+      <span id="brandSub">線上預約</span>
+    </div>
+    <div class="seg" role="group" aria-label="切換畫面">
+      <button data-act="role" data-v="student" aria-pressed="true">學生預約頁</button>
+      <button data-act="role" data-v="teacher" aria-pressed="false">老師後台</button>
+    </div>
+  </header>
+  <div class="proto">
+    <span>原型示範：上方可切換學生與老師畫面；付款為模擬，不會扣款；資料只存在這個瀏覽器。</span>
+    <button data-act="reset">重設示範資料</button>
+  </div>
+  <main id="app"></main>
+  <p class="foot">可預約時段 ＝ 每週固定時段 − 休假日 ＋ 加開時段 − 已被預約（前後各留 10 分鐘休息），且需在上課 12 小時前預約。</p>
+</div>
+<div id="toastHost"></div>
+
+<script>
+(function(){
+'use strict';
+var OFFSET=8*3600000, MIN=60000, HOUR=3600000;
+var BUFFER=10*MIN, NOTICE=12*HOUR, HOLD=15*MIN, STEP=30*MIN, HORIZON=28;
+var STORE='jp-booking-proto-v1', TP='Asia/Taipei';
+var WD=['日','一','二','三','四','五','六'];
+var ORDER=[1,2,3,4,5,6,0];
+var METHODS={card:'信用卡（Visa／Mastercard／JCB）',linepay:'LINE Pay',cvs:'超商代碼繳費',atm:'ATM 轉帳',paypal:'PayPal'};
+var STATUS={pending:'待付款',confirmed:'已確認',completed:'已完成',cancelled:'已取消・已退款',expired:'逾時釋出'};
+
+function $(s){return document.querySelector(s);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function pad(n){return String(n).padStart(2,'0');}
+function money(n){return 'NT$ '+Number(n).toLocaleString('en-US');}
+
+/* ---------- time helpers ---------- */
+function tpYmd(ts){var d=new Date(ts+OFFSET);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate());}
+function parseYmd(s){var p=s.split('-').map(Number);return {y:p[0],m:p[1],d:p[2]};}
+function tpTs(ymd,hm){var p=parseYmd(ymd),t=hm.split(':').map(Number);return Date.UTC(p.y,p.m-1,p.d,t[0],t[1])-OFFSET;}
+function addDays(ymd,n){var p=parseYmd(ymd),t=new Date(Date.UTC(p.y,p.m-1,p.d+n));return t.getUTCFullYear()+'-'+pad(t.getUTCMonth()+1)+'-'+pad(t.getUTCDate());}
+function wday(ymd){var p=parseYmd(ymd);return new Date(Date.UTC(p.y,p.m-1,p.d)).getUTCDay();}
+var fmtCache={};
+function dtf(tz,key,opts){var k=tz+'|'+key;if(!fmtCache[k]){var o={timeZone:tz,hourCycle:'h23'};for(var x in opts)o[x]=opts[x];fmtCache[k]=new Intl.DateTimeFormat('en-GB',o);}return fmtCache[k];}
+function localKey(ts,tz){
+  var p=dtf(tz,'d',{year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(ts));
+  var g=function(t){return p.filter(function(x){return x.type===t;})[0].value;};
+  return g('year')+'-'+g('month')+'-'+g('day');
+}
+function localTime(ts,tz){return dtf(tz,'t',{hour:'2-digit',minute:'2-digit'}).format(new Date(ts));}
+function fmtDT(ts,tz){var k=localKey(ts,tz),p=parseYmd(k);return p.m+'/'+p.d+'（週'+WD[wday(k)]+'）'+localTime(ts,tz);}
+function dayLabel(k){var p=parseYmd(k);return {md:p.m+'/'+p.d,wd:'週'+WD[wday(k)]};}
+function tzOffset(tz){
+  try{
+    var parts=dtf(tz,'o',{timeZoneName:'shortOffset'}).formatToParts(new Date());
+    var v=parts.filter(function(x){return x.type==='timeZoneName';})[0].value;
+    return v.replace('GMT','UTC');
+  }catch(e){return '';}
+}
+function mmss(ms){ms=Math.max(0,ms);var s=Math.ceil(ms/1000);return pad(Math.floor(s/60))+':'+pad(s%60);}
+
+/* ---------- state ---------- */
+var S;
+function load(){try{var r=localStorage.getItem(STORE);if(r)return JSON.parse(r);}catch(e){}return null;}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(S));}catch(e){}}
+function freshState(){
+  return {
+    courses:[
+      {id:'trial',name:'50 分鐘試聽課',min:50,price:500,desc:'第一次上課，一起了解你的程度與學習目標'},
+      {id:'regular',name:'50 分鐘一般課',min:50,price:900,desc:'會話、文法、考試準備都可以'},
+      {id:'long',name:'80 分鐘加長課',min:80,price:1400,desc:'JLPT 作文、面試練習等需要較長時間的內容'}
+    ],
+    rules:{0:[],1:[{s:'19:00',e:'22:00'}],2:[{s:'20:00',e:'22:00'}],3:[{s:'19:00',e:'22:00'}],4:[{s:'20:00',e:'22:00'}],5:[],6:[{s:'10:00',e:'12:00'},{s:'14:00',e:'18:00'}]},
+    exceptions:[],bookings:[],seq:1
+  };
+}
+function newId(){return 'B'+(S.seq++);}
+function courseById(id){return S.courses.filter(function(c){return c.id===id;})[0]||S.courses[0];}
+function addBooking(o){
+  var c=courseById(o.courseId);
+  var b={id:newId(),courseId:c.id,courseName:c.name,price:c.price,start:o.start,end:o.start+c.min*MIN,name:o.name,email:o.email,tz:o.tz,note:o.note||'',status:o.status,createdAt:Date.now(),expires:o.expires||null,paidAt:o.paidAt||null,method:o.method||null,link:o.link||null};
+  S.bookings.push(b);return b;
+}
+function fakeLink(){
+  var a='abcdefghijklmnopqrstuvwxyz';function r(n){var s='';for(var i=0;i<n;i++)s+=a[Math.floor(Math.random()*26)];return s;}
+  return 'https://meet.google.com/'+r(3)+'-'+r(4)+'-'+r(3);
+}
+function seedBookings(){
+  var now=Date.now(),reg=courseById('regular'),sl=slotsFor(reg);
+  var picks=[[2,'王小明','Asia/Taipei','regular','ming@example.com'],[9,'田中 さくら','Asia/Tokyo','trial','sakura@example.com'],[16,'Emily Chen','America/Los_Angeles','regular','emily@example.com']];
+  var chosen=picks.map(function(p){return {t:sl[p[0]],p:p};}).filter(function(x){return x.t;});
+  var past=tpTs(addDays(tpYmd(now),-2),'20:00');
+  addBooking({courseId:'regular',start:past,name:'王小明',email:'ming@example.com',tz:'Asia/Taipei',status:'completed',paidAt:past-86400000,method:'card',link:fakeLink()});
+  chosen.forEach(function(x){addBooking({courseId:x.p[3],start:x.t,name:x.p[1],email:x.p[4],tz:x.p[2],status:'confirmed',paidAt:now-3600000,method:x.p[2]==='Asia/Tokyo'?'paypal':'card',link:fakeLink(),note:x.p[3]==='trial'?'想準備 N3，目前剛學完五十音和基本文法':''});});
+}
+
+/* ---------- availability engine ---------- */
+function windowsFor(ymd){
+  var ex=S.exceptions.filter(function(e){return e.date===ymd;});
+  var closed=ex.some(function(e){return e.type==='closed';});
+  var w=[];
+  if(!closed)(S.rules[wday(ymd)]||[]).forEach(function(r){w.push({s:tpTs(ymd,r.s),e:tpTs(ymd,r.e),extra:false});});
+  ex.filter(function(e){return e.type==='extra';}).forEach(function(e){w.push({s:tpTs(ymd,e.start),e:tpTs(ymd,e.end),extra:true});});
+  return w.sort(function(a,b){return a.s-b.s;});
+}
+function isActive(b,now){return b.status==='confirmed'||b.status==='completed'||(b.status==='pending'&&b.expires>now);}
+function isFree(start,end){
+  var now=Date.now();
+  return !S.bookings.some(function(b){return isActive(b,now)&&start<b.end+BUFFER&&end+BUFFER>b.start;});
+}
+function slotsFor(course){
+  var now=Date.now(),t0=tpYmd(now),dur=course.min*MIN,seen={},out=[];
+  for(var i=0;i<HORIZON;i++){
+    windowsFor(addDays(t0,i)).forEach(function(w){
+      for(var t=w.s;t+dur<=w.e;t+=STEP){
+        if(t>=now+NOTICE&&!seen[t]&&isFree(t,t+dur)){seen[t]=1;out.push(t);}
+      }
+    });
+  }
+  return out.sort(function(a,b){return a-b;});
+}
+
+/* ---------- UI state ---------- */
+var detected='Asia/Taipei';
+try{detected=Intl.DateTimeFormat().resolvedOptions().timeZone||detected;new Intl.DateTimeFormat('en-GB',{timeZone:detected});}catch(e){detected='Asia/Taipei';}
+var TZS=[['Asia/Taipei','台灣'],['Asia/Tokyo','日本'],['Asia/Hong_Kong','香港'],['Asia/Singapore','新加坡'],['America/Los_Angeles','美國西岸'],['America/New_York','美國東岸'],['Europe/London','英國'],['Australia/Sydney','澳洲雪梨']];
+if(!TZS.some(function(t){return t[0]===detected;}))TZS.unshift([detected,'目前所在地']);
+var U;
+function freshUI(){
+  return {role:'student',step:1,courseId:'trial',tz:detected,selDate:null,selSlot:null,form:{name:'',email:'',note:''},errors:{},holdId:null,method:'card',paying:false,payError:false,doneId:null,tab:'calendar',weekOff:0,filter:'all',modal:null,exMsg:''};
+}
+function holdBooking(){return S.bookings.filter(function(b){return b.id===U.holdId;})[0];}
+function currentCourse(){return courseById(U.courseId);}
+
+/* ---------- toast ---------- */
+var toastTimer;
+function toast(msg){
+  var h=$('#toastHost');h.innerHTML='<div class="toast" role="status">'+esc(msg)+'</div>';
+  clearTimeout(toastTimer);toastTimer=setTimeout(function(){h.innerHTML='';},2600);
+}
+
+/* ---------- student views ---------- */
+function stepsHtml(){
+  var L=['選課程','選時段','填資料','付款'];
+  return '<ol class="steps">'+L.map(function(t,i){
+    var n=i+1,c=(U.step>n)?'done':(U.step===n?'cur':'');
+    return '<li class="'+c+'"><span>'+t+'</span></li>';
+  }).join('')+'</ol>';
+}
+function summaryHtml(){
+  var c=currentCourse();
+  var rows='<dt>課程</dt><dd>'+esc(c.name)+'</dd>';
+  if(U.selSlot){
+    rows+='<dt>時間</dt><dd>'+esc(fmtDT(U.selSlot,U.tz))+'</dd>';
+    if(U.tz!==TP)rows+='<dt>台灣時間</dt><dd>'+esc(fmtDT(U.selSlot,TP))+'</dd>';
+  } else rows+='<dt>時間</dt><dd class="muted">尚未選擇</dd>';
+  return '<aside class="panel side"><h3>預約摘要</h3><dl class="kv">'+rows+'</dl><p style="margin:16px 0 0"><span class="price">'+money(c.price)+'</span></p></aside>';
+}
+function s1(){
+  return '<div class="panel"><h2>想上哪一種課？</h2><div class="courses">'+
+    S.courses.map(function(c){
+      return '<button class="course" data-act="pickCourse" data-id="'+c.id+'"><span class="cn">'+esc(c.name)+'</span><span class="cd">'+esc(c.desc)+'</span><span class="cp">'+money(c.price)+'</span></button>';
+    }).join('')+
+    '</div><p class="muted">取消規則（示範）：上課 24 小時前取消，全額退款。</p></div>';
+}
+function s2(){
+  var c=currentCourse(),slots=slotsFor(c),groups={};
+  slots.forEach(function(t){var k=localKey(t,U.tz);(groups[k]=groups[k]||[]).push(t);});
+  var keys=Object.keys(groups).sort();
+  if(U.selSlot&&slots.indexOf(U.selSlot)<0)U.selSlot=null;
+  if(U.selSlot&&!U.selDate)U.selDate=localKey(U.selSlot,U.tz);
+  if(!U.selDate||!groups[U.selDate])U.selDate=keys[0]||null;
+  var tzOpts=TZS.map(function(t){return '<option value="'+esc(t[0])+'"'+(t[0]===U.tz?' selected':'')+'>'+esc(t[1])+'（'+esc(tzOffset(t[0]))+'）</option>';}).join('');
+  var body;
+  if(!keys.length){
+    body='<div class="empty">目前沒有可預約的時段。老師開放新時段後，會顯示在這裡。</div>';
+  } else {
+    body='<div class="dates" role="group" aria-label="選擇日期">'+keys.map(function(k){
+      var d=dayLabel(k);
+      return '<button class="date" data-act="pickDate" data-k="'+k+'" aria-pressed="'+(k===U.selDate)+'"><small>'+d.wd+'</small><b>'+d.md+'</b><small>'+groups[k].length+' 個時段</small></button>';
+    }).join('')+'</div><div class="slots">'+groups[U.selDate].map(function(t){
+      return '<button class="slot" data-act="pickSlot" data-t="'+t+'" aria-pressed="'+(t===U.selSlot)+'">'+localTime(t,U.tz)+(U.tz!==TP?'<small>台灣 '+localTime(t,TP)+'</small>':'')+'</button>';
+    }).join('')+'</div>';
+  }
+  return '<div class="panel"><h2>選擇上課時間</h2>'+
+    '<div class="field" style="max-width:320px"><label for="tzSel">顯示時區</label><select id="tzSel" data-bind="tz">'+tzOpts+'</select></div>'+body+
+    '<div class="actions"><button class="btn" data-act="back">上一步</button><button class="btn primary" data-act="goInfo"'+(U.selSlot?'':' disabled')+'>下一步</button></div></div>';
+}
+function s3(){
+  var e=U.errors;
+  return '<div class="panel"><h2>你的聯絡資料</h2>'+
+    '<div class="field"><label for="fName">姓名或暱稱</label><input type="text" id="fName" data-form="name" value="'+esc(U.form.name)+'" autocomplete="name">'+(e.name?'<div class="err">'+e.name+'</div>':'')+'</div>'+
+    '<div class="field"><label for="fEmail">Email（確認信與上課連結會寄到這裡）</label><input type="email" id="fEmail" data-form="email" value="'+esc(U.form.email)+'" autocomplete="email">'+(e.email?'<div class="err">'+e.email+'</div>':'')+'</div>'+
+    '<div class="field"><label for="fNote">想讓老師先知道的事（選填）</label><textarea id="fNote" data-form="note" placeholder="例如：目前程度、想考的檢定、想加強的部分">'+esc(U.form.note)+'</textarea></div>'+
+    (e.slot?'<div class="err" style="margin-bottom:10px">'+e.slot+'</div>':'')+
+    '<div class="actions"><button class="btn" data-act="back">上一步</button><button class="btn primary" data-act="toPay">前往付款</button></div></div>';
+}
+function s4(){
+  var b=holdBooking();
+  if(!b||b.status!=='pending'||b.expires<=Date.now()){
+    return '<div class="panel"><h2>保留時間已結束</h2><p>為了讓其他同學也有機會預約，未在 15 分鐘內完成付款的時段已經釋出。請重新選擇時段。</p><div class="actions"><span></span><button class="btn primary" data-act="restartTime">重新選擇時段</button></div></div>';
+  }
+  var c=currentCourse();
+  return '<div class="panel"><h2>付款</h2>'+
+    '<div class="hold">時段已為你保留，請在 <b id="cd">'+mmss(b.expires-Date.now())+'</b> 內完成付款，逾時會自動釋出。</div>'+
+    '<div class="notice">這是原型：按下付款只會模擬付款成功，不會真的扣款。實際串接綠界或藍新時，會在這一步跳轉到金流頁面。</div>'+
+    (U.payError?'<div class="fail" role="alert">付款未完成：銀行拒絕這筆交易。你的時段仍保留到倒數結束，可以換一種付款方式再試一次。</div>':'')+
+    '<div class="methods" role="group" aria-label="付款方式">'+Object.keys(METHODS).map(function(k){
+      return '<button class="method" data-act="method" data-k="'+k+'" aria-pressed="'+(U.method===k)+'"><i></i>'+METHODS[k]+'</button>';
+    }).join('')+'</div>'+
+    ((U.method==='cvs'||U.method==='atm')?'<p class="muted">真實流程中，超商與 ATM 要繳費後才會確認，保留時間會設得更長（例如 3 天）。這裡直接模擬成功。</p>':'')+
+    '<div class="actions"><button class="btn" data-act="backFromPay"'+(U.paying?' disabled':'')+'>上一步</button><div class="row"><button class="lnk" data-act="payFail"'+(U.paying?' disabled':'')+'>模擬付款失敗</button><button class="btn primary" data-act="pay"'+(U.paying?' disabled':'')+'>'+(U.paying?'處理中…':'付款 '+money(c.price))+'</button></div></div></div>';
+}
+function stampSvg(){
+  return '<svg class="stamp" viewBox="0 0 120 120" role="img" aria-label="預約完成印章"><defs><filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2"/></filter></defs>'+
+  '<g filter="url(#rough)" fill="currentColor"><rect x="7" y="7" width="106" height="106" rx="9" fill="none" stroke="currentColor" stroke-width="6"/>'+
+  '<g font-family="Noto Serif TC,serif" font-weight="700" font-size="38" text-anchor="middle"><text x="82" y="50">予</text><text x="82" y="95">約</text><text x="38" y="50">完</text><text x="38" y="95">了</text></g></g></svg>';
+}
+function s5(){
+  var b=S.bookings.filter(function(x){return x.id===U.doneId;})[0];
+  if(!b)return '<div class="panel"><p>找不到這筆預約。</p></div>';
+  var rows='<dt>課程</dt><dd>'+esc(b.courseName)+'</dd><dt>時間</dt><dd>'+esc(fmtDT(b.start,U.tz))+' 開始，共 '+Math.round((b.end-b.start)/MIN)+' 分鐘</dd>';
+  if(U.tz!==TP)rows+='<dt>台灣時間</dt><dd>'+esc(fmtDT(b.start,TP))+'</dd>';
+  rows+='<dt>上課連結</dt><dd>'+esc(b.link)+'<div class="muted">示範連結，不是真的會議室</div></dd><dt>付款</dt><dd>'+money(b.price)+'（'+esc(METHODS[b.method]||'')+'）</dd>';
+  return '<div class="panel done">'+stampSvg()+'<h2 style="margin-bottom:6px">預約完成</h2><p class="muted">確認信已寄到 '+esc(b.email)+'（原型不會真的寄信）</p><dl class="kv">'+rows+'</dl>'+
+    '<p class="muted">上課前 24 小時前可免費取消或改期。</p><div class="row" style="justify-content:center;margin-top:18px"><button class="btn" data-act="restart">再預約一堂</button><button class="btn primary" data-act="role" data-v="teacher">到老師後台看看這筆預約</button></div></div>';
+}
+function renderStudent(){
+  if(U.step===5)return s5();
+  var main=[null,s1,s2,s3,s4][U.step]();
+  if(U.step===1)return stepsHtml()+main;
+  return stepsHtml()+'<div class="layout">'+main+summaryHtml()+'</div>';
+}
+
+/* ---------- teacher views ---------- */
+function monthRevenue(){
+  var ym=tpYmd(Date.now()).slice(0,7);
+  return S.bookings.filter(function(b){return (b.status==='confirmed'||b.status==='completed')&&b.paidAt&&tpYmd(b.paidAt).slice(0,7)===ym;}).reduce(function(a,b){return a+b.price;},0);
+}
+function statsHtml(){
+  var now=Date.now(),wkEnd=now+7*24*HOUR;
+  var up=S.bookings.filter(function(b){return b.status==='confirmed'&&b.start>now;});
+  var wk=up.filter(function(b){return b.start<wkEnd;});
+  var pend=S.bookings.filter(function(b){return b.status==='pending'&&b.expires>now;});
+  return '<div class="stats"><div class="stat"><b>'+wk.length+'</b><span>未來 7 天的課</span></div><div class="stat"><b>'+up.length+'</b><span>已確認、尚未上的課</span></div><div class="stat"><b>'+pend.length+'</b><span>保留中、等待付款</span></div><div class="stat"><b>'+money(monthRevenue())+'</b><span>本月已收款</span></div></div>';
+}
+function calendarHtml(){
+  var today=tpYmd(Date.now()),diff=(wday(today)+6)%7,mon=addDays(today,-diff+7*U.weekOff),now=Date.now(),cols='';
+  for(var i=0;i<7;i++){
+    var ymd=addDays(mon,i),dl=dayLabel(ymd),items=[];
+    var ex=S.exceptions.filter(function(e){return e.date===ymd;});
+    windowsFor(ymd).forEach(function(w){items.push({t:w.s,h:'<div class="win'+(w.extra?' extra':'')+'">'+(w.extra?'加開 ':'開放 ')+localTime(w.s,TP)+'–'+localTime(w.e,TP)+'</div>'});});
+    S.bookings.filter(function(b){return isActive(b,now)&&tpYmd(b.start)===ymd;}).forEach(function(b){
+      items.push({t:b.start-1,h:'<button class="chip st-'+b.status+'" data-act="openBooking" data-id="'+b.id+'">'+localTime(b.start,TP)+' '+esc(b.name)+'<small>'+esc(b.courseName)+(b.status==='pending'?'・待付款':'')+'</small></button>'});
+    });
+    items.sort(function(a,b){return a.t-b.t;});
+    cols+='<div class="day'+(ymd===today?' today':'')+'"><div class="dh"><span>'+dl.wd+'</span><b>'+dl.md+'</b></div>'+
+      (ex.some(function(e){return e.type==='closed';})?'<div class="off">休假</div>':'')+
+      (items.length?items.map(function(x){return x.h;}).join(''):'<div class="muted">沒有開放</div>')+'</div>';
+  }
+  var a=dayLabel(mon),z=dayLabel(addDays(mon,6));
+  return '<div class="wkhead"><div class="row"><button class="btn sm" data-act="week" data-d="-1" aria-label="上一週">上一週</button><button class="btn sm" data-act="week" data-d="0">本週</button><button class="btn sm" data-act="week" data-d="1" aria-label="下一週">下一週</button></div><b>'+a.md+' – '+z.md+'（台灣時間）</b></div>'+
+    '<div class="wkscroll"><div class="week">'+cols+'</div></div>'+
+    '<div class="legend"><span>實心：已確認</span><span>黃色：保留中，等待付款</span><span>外框：已完成</span><span>虛線：開放接課的時段</span></div>';
+}
+function bookingsHtml(){
+  var now=Date.now(),F=U.filter;
+  var list=S.bookings.slice().sort(function(a,b){return b.start-a.start;}).filter(function(b){
+    if(F==='upcoming')return b.status==='confirmed'&&b.start>now;
+    if(F==='pending')return b.status==='pending'&&b.expires>now;
+    if(F==='completed')return b.status==='completed'||(b.status==='confirmed'&&b.start<=now);
+    if(F==='cancelled')return b.status==='cancelled'||b.status==='expired';
+    return true;
+  });
+  var fl=[['all','全部'],['upcoming','待上課'],['pending','待付款'],['completed','已上完'],['cancelled','取消／逾時']];
+  return '<div class="filters" role="group" aria-label="篩選">'+fl.map(function(f){return '<button data-act="filter" data-v="'+f[0]+'" aria-pressed="'+(F===f[0])+'">'+f[1]+'</button>';}).join('')+'</div>'+
+    (list.length?'<div class="blist">'+list.map(function(b){
+      var st=(b.status==='pending'&&b.expires<=now)?'expired':b.status;
+      return '<button class="brow'+((st==='cancelled'||st==='expired')?' dim':'')+'" data-act="openBooking" data-id="'+b.id+'"><span>'+esc(fmtDT(b.start,TP))+'</span><span>'+esc(b.name)+'<small>'+esc(b.courseName)+'・'+esc(b.tz===TP?'台灣':b.tz)+'</small></span><span class="c3">'+money(b.price)+'</span><span class="badge '+st+'">'+STATUS[st]+'</span></button>';
+    }).join('')+'</div>':'<div class="empty">沒有符合的預約。</div>');
+}
+function rulesHtml(){
+  var rows=ORDER.map(function(d){
+    var rs=S.rules[d]||[];
+    return '<div class="rrow"><div class="rd">週'+WD[d]+'</div><div>'+(rs.length?rs.map(function(r,i){
+      return '<div class="range"><input type="time" step="900" value="'+r.s+'" data-rule="'+d+'|'+i+'|s" aria-label="週'+WD[d]+'開始時間"><span>至</span><input type="time" step="900" value="'+r.e+'" data-rule="'+d+'|'+i+'|e" aria-label="週'+WD[d]+'結束時間"><button class="lnk" data-act="delRange" data-d="'+d+'" data-i="'+i+'">移除</button></div>';
+    }).join(''):'<span class="muted" style="line-height:2.4">不接課</span>')+'</div><button class="btn sm" data-act="addRange" data-d="'+d+'">新增時段</button></div>';
+  }).join('');
+  var exs=S.exceptions.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+  return '<div class="layout"><div class="panel"><h3>每週固定時段（台灣時間）</h3><p class="muted">修改後學生預約頁會立刻套用。已被預約的時間不受影響。</p>'+rows+'</div>'+
+    '<div class="panel"><h3>特定日期</h3><div class="field"><label for="exDate">日期</label><input type="date" id="exDate" min="'+tpYmd(Date.now())+'"></div>'+
+    '<div class="field"><label for="exType">類型</label><select id="exType"><option value="closed">整天休假</option><option value="extra">加開時段</option></select></div>'+
+    '<div class="grid2 hidden" id="exTimes"><div class="field"><label for="exS">開始</label><input type="time" id="exS" step="900" value="14:00"></div><div class="field"><label for="exE">結束</label><input type="time" id="exE" step="900" value="17:00"></div></div>'+
+    '<button class="btn primary" data-act="addExc">加入</button>'+(U.exMsg?'<div class="err" style="margin-top:8px">'+esc(U.exMsg)+'</div>':'')+
+    '<ul class="exlist">'+(exs.length?exs.map(function(e){var dl=dayLabel(e.date);return '<li><span>'+dl.md+'（'+dl.wd+'）'+(e.type==='closed'?'休假':'加開 '+e.start+'–'+e.end)+'</span><button class="lnk" data-act="delExc" data-id="'+e.id+'">移除</button></li>';}).join(''):'<li class="muted">還沒有例外日期</li>')+'</ul></div></div>';
+}
+function coursesHtml(){
+  return '<div class="panel"><h3>課程與價格</h3><p class="muted">價格以新台幣計算；日本與海外學生用信用卡付款時，由銀行自動換匯。已成立的預約會保留當時的價格。</p>'+
+    S.courses.map(function(c){
+      return '<div class="crow"><div class="field" style="margin:0"><label for="cn_'+c.id+'">課程名稱</label><input type="text" id="cn_'+c.id+'" value="'+esc(c.name)+'" data-course="'+c.id+'|name"></div>'+
+        '<div class="field" style="margin:0"><label for="cm_'+c.id+'">時長（分鐘）</label><input type="number" id="cm_'+c.id+'" min="20" max="180" step="5" value="'+c.min+'" data-course="'+c.id+'|min"></div>'+
+        '<div class="field" style="margin:0"><label for="cpz_'+c.id+'">價格（NT$）</label><input type="number" id="cpz_'+c.id+'" min="0" step="50" value="'+c.price+'" data-course="'+c.id+'|price"></div></div>';
+    }).join('')+'</div>';
+}
+function modalHtml(){
+  if(!U.modal)return '';
+  var b=S.bookings.filter(function(x){return x.id===U.modal.id;})[0];if(!b)return '';
+  var now=Date.now(),st=(b.status==='pending'&&b.expires<=now)?'expired':b.status;
+  var rows='<dt>狀態</dt><dd><span class="badge '+st+'">'+STATUS[st]+'</span></dd>'+
+    '<dt>課程</dt><dd>'+esc(b.courseName)+'（'+Math.round((b.end-b.start)/MIN)+' 分鐘）</dd>'+
+    '<dt>台灣時間</dt><dd>'+esc(fmtDT(b.start,TP))+'</dd>';
+  if(b.tz!==TP)rows+='<dt>學生當地</dt><dd>'+esc(fmtDT(b.start,b.tz))+'（'+esc(b.tz)+'）</dd>';
+  rows+='<dt>Email</dt><dd>'+esc(b.email)+'</dd>';
+  if(b.note)rows+='<dt>學生備註</dt><dd>'+esc(b.note)+'</dd>';
+  rows+='<dt>金額</dt><dd>'+money(b.price)+(b.method?'（'+esc(METHODS[b.method])+'）':'')+'</dd>';
+  if(b.link)rows+='<dt>上課連結</dt><dd>'+esc(b.link)+'</dd>';
+  var actions='';
+  if(U.modal.confirmCancel){
+    actions='<p class="err" style="margin:0 0 10px">確定要取消這堂課嗎？系統會標記為已退款並釋出時段，並通知學生。</p><div class="row"><button class="btn danger" data-act="doCancel" data-id="'+b.id+'">確定取消並退款</button><button class="btn" data-act="keepBooking">先不要</button></div>';
+  } else {
+    actions='<div class="row">'+(b.status==='confirmed'?'<button class="btn primary" data-act="complete" data-id="'+b.id+'">標記已完成</button><button class="btn danger" data-act="askCancel">取消預約</button>':'')+'<button class="btn" data-act="closeModal">關閉</button></div>';
+  }
+  return '<div class="overlay" data-act="overlay"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="mTitle"><h3 id="mTitle">'+esc(b.name)+' 的預約</h3><dl class="kv" style="margin:14px 0 20px">'+rows+'</dl>'+actions+'</div></div>';
+}
+function renderTeacher(){
+  var tabs=[['calendar','行事曆'],['bookings','預約列表'],['rules','開放時段'],['courses','課程與價格']];
+  var body={calendar:calendarHtml,bookings:bookingsHtml,rules:rulesHtml,courses:coursesHtml}[U.tab]();
+  return statsHtml()+'<div class="tabs" role="tablist">'+tabs.map(function(t){return '<button role="tab" data-act="tab" data-v="'+t[0]+'" aria-selected="'+(U.tab===t[0])+'">'+t[1]+'</button>';}).join('')+'</div>'+body+modalHtml();
+}
+
+/* ---------- render ---------- */
+function render(){
+  var app=$('#app');
+  app.innerHTML=(U.role==='student')?renderStudent():renderTeacher();
+  document.querySelectorAll('.seg button').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.v===U.role));});
+  $('#brandSub').textContent=U.role==='student'?'線上預約':'老師後台';
+}
+
+/* ---------- actions ---------- */
+function validateInfo(){
+  var e={},f=U.form;
+  if(!f.name.trim())e.name='請填寫姓名或暱稱';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim()))e.email='請填寫正確的 Email，例如 name@example.com';
+  U.errors=e;return !Object.keys(e).length;
+}
+function dropHold(){
+  var b=holdBooking();
+  if(b&&b.status==='pending'){S.bookings=S.bookings.filter(function(x){return x.id!==b.id;});save();}
+  U.holdId=null;U.payError=false;U.paying=false;
+}
+function act(a,el){
+  var d=el.dataset;
+  switch(a){
+    case 'role':U.role=d.v;U.modal=null;break;
+    case 'reset':
+      try{localStorage.removeItem(STORE);}catch(e){}
+      S=freshState();seedBookings();save();U=freshUI();toast('已重設為示範資料');break;
+    case 'pickCourse':U.courseId=d.id;U.selSlot=null;U.selDate=null;U.step=2;break;
+    case 'pickDate':U.selDate=d.k;break;
+    case 'pickSlot':U.selSlot=Number(d.t);break;
+    case 'goInfo':if(U.selSlot)U.step=3;break;
+    case 'back':U.step=Math.max(1,U.step-1);U.errors={};break;
+    case 'toPay':
+      if(!validateInfo())break;
+      var c=currentCourse(),dur=c.min*MIN;
+      if(!U.selSlot||!isFree(U.selSlot,U.selSlot+dur)||U.selSlot<Date.now()+NOTICE){U.errors={slot:'這個時段剛剛被別人預約了，請回上一步重新選擇。'};U.selSlot=null;break;}
+      var h=addBooking({courseId:c.id,start:U.selSlot,name:U.form.name.trim(),email:U.form.email.trim(),tz:U.tz,note:U.form.note.trim(),status:'pending',expires:Date.now()+HOLD});
+      U.holdId=h.id;save();U.step=4;U.payError=false;break;
+    case 'backFromPay':dropHold();U.step=3;break;
+    case 'restartTime':dropHold();U.selSlot=null;U.step=2;break;
+    case 'method':U.method=d.k;break;
+    case 'payFail':U.payError=true;break;
+    case 'pay':
+      U.paying=true;U.payError=false;render();
+      setTimeout(function(){
+        var b=holdBooking();U.paying=false;
+        if(!b||b.status!=='pending'||b.expires<=Date.now()){render();return;}
+        b.status='confirmed';b.paidAt=Date.now();b.method=U.method;b.link=fakeLink();b.expires=null;
+        save();U.doneId=b.id;U.holdId=null;U.step=5;render();
+      },1300);
+      return;
+    case 'restart':U.step=1;U.selSlot=null;U.selDate=null;U.holdId=null;U.doneId=null;U.form={name:'',email:'',note:''};U.errors={};break;
+    case 'tab':U.tab=d.v;U.exMsg='';break;
+    case 'week':U.weekOff=d.d==='0'?0:U.weekOff+Number(d.d);break;
+    case 'filter':U.filter=d.v;break;
+    case 'openBooking':U.modal={id:d.id};break;
+    case 'closeModal':case 'keepBooking':U.modal=null;break;
+    case 'overlay':if(el!==window.__evtTarget)return;U.modal=null;break;
+    case 'askCancel':U.modal.confirmCancel=true;break;
+    case 'complete':
+      S.bookings.forEach(function(b){if(b.id===d.id&&b.status==='confirmed')b.status='completed';});
+      save();U.modal=null;toast('已標記為完成');break;
+    case 'doCancel':
+      S.bookings.forEach(function(b){if(b.id===d.id)b.status='cancelled';});
+      save();U.modal=null;toast('已取消，並標記退款');break;
+    case 'addRange':
+      (S.rules[d.d]=S.rules[d.d]||[]).push({s:'19:00',e:'21:00'});save();break;
+    case 'delRange':S.rules[d.d].splice(Number(d.i),1);save();break;
+    case 'addExc':
+      var date=$('#exDate').value,type=$('#exType').value,s=$('#exS').value,e2=$('#exE').value;
+      if(!date){U.exMsg='請先選擇日期';break;}
+      if(type==='extra'&&(!s||!e2||e2<=s)){U.exMsg='結束時間要晚於開始時間';break;}
+      U.exMsg='';
+      S.exceptions.push({id:'E'+Date.now(),date:date,type:type,start:s,end:e2});save();
+      toast(type==='closed'?'已設定休假':'已加開時段');break;
+    case 'delExc':S.exceptions=S.exceptions.filter(function(x){return x.id!==d.id;});save();break;
+  }
+  render();
+}
+
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-act]');if(!el||el.disabled)return;
+  window.__evtTarget=e.target;
+  act(el.dataset.act,el);
+});
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.dataset&&t.dataset.form){U.form[t.dataset.form]=t.value;}
+});
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.dataset&&t.dataset.bind==='tz'){
+    U.tz=t.value;U.selDate=U.selSlot?localKey(U.selSlot,U.tz):null;render();return;
+  }
+  if(t.id==='exType'){var box=$('#exTimes');if(box)box.classList.toggle('hidden',t.value!=='extra');return;}
+  if(t.dataset&&t.dataset.rule){
+    var p=t.dataset.rule.split('|'),r=S.rules[p[0]][Number(p[1])];
+    var old=r[p[2]];r[p[2]]=t.value;
+    if(!r.s||!r.e||r.e<=r.s){r[p[2]]=old;toast('結束時間要晚於開始時間');render();return;}
+    save();toast('已更新');return;
+  }
+  if(t.dataset&&t.dataset.course){
+    var q=t.dataset.course.split('|'),c=courseById(q[0]);
+    if(q[1]==='name'){c.name=t.value.trim()||c.name;}
+    else{var v=Number(t.value);if(!isFinite(v)||v<0){render();return;}c[q[1]]=v;}
+    save();toast('已儲存');
+  }
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&U.modal){U.modal=null;render();}
+});
+
+/* hold expiry + countdown */
+setInterval(function(){
+  var now=Date.now(),changed=false;
+  S.bookings.forEach(function(b){if(b.status==='pending'&&b.expires<=now){b.status='expired';changed=true;}});
+  if(changed){save();render();return;}
+  var el=$('#cd');if(el){var b=holdBooking();if(b)el.textContent=mmss(b.expires-now);}
+},1000);
+
+/* boot */
+S=load();
+if(!S||!S.courses){S=freshState();seedBookings();save();}
+U=freshUI();
+render();
+})();
+</script>
+</body>
+</html>
