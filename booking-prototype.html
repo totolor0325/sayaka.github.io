@@ -200,6 +200,11 @@ dl.kv dd{margin:0;word-break:break-word}
 .dialog{background:var(--card);border-radius:10px;max-width:470px;width:100%;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.35);max-height:92%;overflow:auto}
 .dialog h3{font-size:20px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:8px;font-size:14px;z-index:30;max-width:90%}
+.gev{font-size:12px;border-radius:4px;padding:3px 6px;margin-bottom:6px;color:var(--ink2);border:1px solid var(--line);background:repeating-linear-gradient(135deg,transparent 0 5px,var(--line) 5px 6px)}
+.chk{display:flex;gap:10px;align-items:flex-start;margin:12px 0;cursor:pointer;font-size:14px}
+.chk input{margin-top:5px;width:auto}
+ul.plain{padding-left:20px;margin:0 0 18px}
+ul.plain li{margin-bottom:6px}
 .foot{margin-top:36px;font-size:12px;color:var(--ink2)}
 </style>
 </head>
@@ -236,9 +241,9 @@ dl.kv dd{margin:0;word-break:break-word}
 (function(){
 'use strict';
 var OFFSET=8*3600000, MIN=60000, HOUR=3600000;
-var BUFFER=10*MIN, NOTICE=12*HOUR, HOLD=15*MIN, STEP=30*MIN, HORIZON=28;
-var STORE='jp-booking-proto-v3', LANGKEY='jp-booking-proto-lang', TP='Asia/Taipei';
-var DEMO_EMAIL='misheru0512@gmail.com', DEMO_PASS='yasaka6012';
+var BUFFER=10*MIN, NOTICE=12*HOUR, HOLD=15*MIN, STEP=HOUR, HORIZON=28, CHANGE_LIMIT=24*HOUR;
+var STORE='jp-booking-proto-v5', LANGKEY='jp-booking-proto-lang', TP='Asia/Taipei';
+var AUTH_SALT='jp-lesson-proto-v1', AUTH_ITER=150000, AUTH_HASH='97073f85e3846598a641ccfb96d7e040738f2bcef0a641bf83ace22d7e603470';
 var ORDER=[1,2,3,4,5,6,0];
 var WDN={zh:['日','一','二','三','四','五','六'],ja:['日','月','火','水','木','金','土'],en:['Sun','Mon','Tue','Wed','Thu','Fri','Sat']};
 var HTML_LANG={zh:'zh-Hant',ja:'ja',en:'en'};
@@ -248,7 +253,7 @@ var I18N={
 zh:{
   appSub:'線上預約',roleStudent:'學生預約頁',roleTeacher:'老師後台',reset:'重設示範資料',
   protoNote:'原型示範：上方可切換學生與老師畫面；付款為模擬，不會扣款；資料只存在這個瀏覽器。',
-  footNote:'可預約時段 ＝ 老師每週開放的時段 − 休假日 ＋ 加開時段 − 已被預約的時間（前後各留 10 分鐘休息），且需在上課 12 小時前預約。',
+  footNote:'可預約時段 ＝ 老師每週開放的時段 − 休假日 ＋ 加開時段 − 已被預約的時間（前後各留 10 分鐘休息），且需在上課 12 小時前預約。課程皆從整點開始，老師行事曆（Google 日曆）上已有行程的時間不會開放預約。',
   step1:'選課程',step2:'選時段',step3:'填資料',step4:'付款',
   sumTitle:'預約摘要',sumCourse:'課程',sumTime:'時間',sumTaiwan:'台灣時間',sumNone:'尚未選擇',
   s1Title:'想上哪一種課？',s1Policy:'取消規則（示範）：上課 24 小時前取消，全額退款。',
@@ -261,16 +266,30 @@ zh:{
   payFail:'付款未完成：銀行拒絕這筆交易。你的時段仍保留到倒數結束，可以換一種付款方式再試一次。',
   cvsNote:'真實流程中，超商與 ATM 要繳費後才會確認，保留時間會設得更長（例如 3 天）。這裡直接模擬成功。',
   processing:'處理中…',payBtn:'付款 {price}',simFail:'模擬付款失敗',
-  expTitle:'保留時間已結束',expBody:'為了讓其他同學也有機會預約，未在 15 分鐘內完成付款的時段已經釋出。請重新選擇時段。',expBtn:'重新選擇時段',
+  expTitle:'保留時間已結束',expBody:'為了讓其他同學也有機會預約，未在 15 分鐘內完成付款的時段已經釋出。請重新選擇時段。',expBtn:'重新選擇時段',conflictTitle:'這個時段已無法預約',conflictBody:'老師剛剛在行事曆新增了行程，這個時段已經無法上課。這筆款項不會被收取，請重新選擇其他時段。',
   doneTitle:'預約完成',doneMail:'確認信已寄到 {email}（原型不會真的寄信）',dCourse:'課程',dTime:'時間',dTaiwan:'台灣時間',dLink:'上課連結',dLinkDemo:'示範連結，不是真的會議室',dPay:'付款',
   dReminder:'上課前 24 小時前可免費取消或改期。',dAnother:'再預約一堂',dSeeTeacher:'到老師後台看看這筆預約',mins:'{n} 分鐘',
   toastReset:'已重設為示範資料',notFound:'找不到這筆預約。',stampAria:'預約完成印章',
-  m_card:'信用卡（Visa／Mastercard／JCB）',m_linepay:'LINE Pay',m_cvs:'超商代碼繳費',m_atm:'ATM 轉帳',m_paypal:'PayPal'
+  m_card:'信用卡（Visa／Mastercard／JCB）',m_linepay:'LINE Pay',m_cvs:'超商代碼繳費',m_atm:'ATM 轉帳',m_paypal:'PayPal',
+  navBook:'預約課程',navManage:'管理我的預約',
+  mgTitle:'查詢與管理預約',mgIntro:'輸入預約時填寫的 Email 與預約編號，就能查看、改期或取消。預約編號會顯示在預約完成頁和確認信中。',
+  mgHint:'示範用：預約完成頁會顯示預約編號，也可以在老師後台的預約詳情看到編號（例如 ming@example.com 那一筆）。',
+  mgEmail:'Email',mgRef:'預約編號',mgFind:'查詢預約',mgNotFound:'找不到符合的預約，請確認 Email 與預約編號是否正確。',
+  mgYour:'你的預約',mgRefLabel:'預約編號',st_confirmed:'已確認',st_completed:'已完成',st_cancelled:'已取消',
+  mgResched:'改期',mgCancel:'取消預約',mgCancelNoRefund:'取消（不退款）',
+  mgLocked:'距離上課已不到 24 小時，無法自行改期，取消也不會退款。如有特殊狀況，請直接聯絡老師。',
+  mgPast:'這堂課已經結束。',mgCancelledInfo:'這筆預約已取消。',
+  mgCancelAskFull:'確定要取消這堂課嗎？離上課還有 24 小時以上，將全額退款 {price}。',mgCancelAskNo:'離上課已不到 24 小時，取消後不會退款。確定要取消嗎？',
+  mgCancelYes:'確定取消',mgKeep:'先不要',mgCancelledTitle:'預約已取消',
+  mgRefundFull:'退款 {price} 會在 5–10 個工作天內退回原付款方式（示範）。',mgRefundNone:'依取消規定，這堂課不退款。',
+  mgReschedTitle:'選擇新的上課時間',mgReschedOk:'確認改到這個時間',mgReschedDoneTitle:'已改期',mgOld:'原本時間',mgNew:'新的時間',
+  mgNotified:'老師已收到通知，行事曆也已更新。',mgBackList:'回到這筆預約',mgNewBook:'預約新的課程',mgSlotTaken:'這個時段剛剛被預約了，請選擇其他時段。',
+  doneRef:'預約編號',dManage:'管理這筆預約（取消／改期）'
 },
 ja:{
   appSub:'オンライン予約',roleStudent:'生徒の予約ページ',roleTeacher:'先生の管理画面',reset:'デモデータをリセット',
   protoNote:'プロトタイプ：上のボタンで生徒画面と先生画面を切り替えられます。支払いは模擬で、実際には課金されません。データはこのブラウザ内だけに保存されます。',
-  footNote:'予約できる枠 ＝ 先生が毎週開けている時間 − 休みの日 ＋ 臨時の枠 − すでに入っている予約（前後10分の休憩を確保）。レッスンの12時間前までご予約いただけます。',
+  footNote:'予約できる枠 ＝ 先生が毎週開けている時間 − 休みの日 ＋ 臨時の枠 − すでに入っている予約（前後10分の休憩を確保）。レッスンは毎時0分開始で、レッスンの12時間前までご予約いただけます。先生のGoogleカレンダーに予定がある時間は予約できません。',
   step1:'コース選択',step2:'日時選択',step3:'お客様情報',step4:'お支払い',
   sumTitle:'ご予約内容',sumCourse:'コース',sumTime:'日時',sumTaiwan:'台湾時間',sumNone:'未選択',
   s1Title:'どのレッスンにしますか？',s1Policy:'キャンセル規定（例）：レッスンの24時間前までのキャンセルは全額返金します。',
@@ -283,16 +302,30 @@ ja:{
   payFail:'お支払いが完了しませんでした：カード会社に拒否されました。枠はカウントダウン終了まで確保されています。別のお支払い方法でもう一度お試しください。',
   cvsNote:'実際の運用では、コンビニ・ATMは入金確認後に予約が確定するため、確保時間を長め（例：3日）にします。ここでは即成功として扱います。',
   processing:'処理中…',payBtn:'{price}を支払う',simFail:'支払い失敗をシミュレート',
-  expTitle:'確保時間が終了しました',expBody:'ほかの方も予約できるよう、15分以内にお支払いがなかった枠は解放されました。もう一度日時を選んでください。',expBtn:'日時を選び直す',
+  expTitle:'確保時間が終了しました',expBody:'ほかの方も予約できるよう、15分以内にお支払いがなかった枠は解放されました。もう一度日時を選んでください。',expBtn:'日時を選び直す',conflictTitle:'この枠は予約できなくなりました',conflictBody:'先生の予定が直前に入ったため、この枠ではレッスンができなくなりました。お支払いは確定されていません。別の日時をお選びください。',
   doneTitle:'ご予約が完了しました',doneMail:'確認メールを {email} に送信しました（プロトタイプのため実際には送信されません）',dCourse:'コース',dTime:'日時',dTaiwan:'台湾時間',dLink:'レッスンのリンク',dLinkDemo:'デモ用リンクです（実際のミーティングルームではありません）',dPay:'お支払い',
   dReminder:'レッスンの24時間前までなら無料でキャンセル・日程変更できます。',dAnother:'もう1回予約する',dSeeTeacher:'先生の管理画面でこの予約を確認する',mins:'{n}分',
   toastReset:'デモデータをリセットしました',notFound:'予約が見つかりません。',stampAria:'予約完了の印',
-  m_card:'クレジットカード（Visa／Mastercard／JCB）',m_linepay:'LINE Pay',m_cvs:'コンビニ払い',m_atm:'ATM振込',m_paypal:'PayPal'
+  m_card:'クレジットカード（Visa／Mastercard／JCB）',m_linepay:'LINE Pay',m_cvs:'コンビニ払い',m_atm:'ATM振込',m_paypal:'PayPal',
+  navBook:'レッスンを予約',navManage:'予約の確認・変更',
+  mgTitle:'予約の確認・変更',mgIntro:'ご予約時のメールアドレスと予約番号を入力すると、予約内容の確認・日程変更・キャンセルができます。予約番号は予約完了画面と確認メールに記載されています。',
+  mgHint:'デモ用：予約番号は予約完了画面に表示されます。先生の管理画面の予約詳細でも確認できます（例：ming@example.com の予約）。',
+  mgEmail:'メールアドレス',mgRef:'予約番号',mgFind:'予約を検索',mgNotFound:'該当する予約が見つかりません。メールアドレスと予約番号をご確認ください。',
+  mgYour:'ご予約内容',mgRefLabel:'予約番号',st_confirmed:'確定',st_completed:'受講済み',st_cancelled:'キャンセル済み',
+  mgResched:'日程を変更',mgCancel:'予約をキャンセル',mgCancelNoRefund:'キャンセル（返金なし）',
+  mgLocked:'レッスンまで24時間を切っているため、日程の変更はできず、キャンセルしても返金されません。やむを得ない事情がある場合は先生に直接ご連絡ください。',
+  mgPast:'このレッスンは終了しています。',mgCancelledInfo:'この予約はキャンセルされています。',
+  mgCancelAskFull:'このレッスンをキャンセルしますか？開始まで24時間以上あるため、{price}を全額返金します。',mgCancelAskNo:'開始まで24時間を切っているため、キャンセルしても返金されません。キャンセルしますか？',
+  mgCancelYes:'キャンセルする',mgKeep:'やめる',mgCancelledTitle:'キャンセルしました',
+  mgRefundFull:'{price}は5〜10営業日以内に、元のお支払い方法へ返金されます（デモ）。',mgRefundNone:'キャンセル規定により、このレッスンは返金されません。',
+  mgReschedTitle:'新しい日時を選ぶ',mgReschedOk:'この日時に変更する',mgReschedDoneTitle:'日程を変更しました',mgOld:'変更前',mgNew:'変更後',
+  mgNotified:'先生に通知し、カレンダーも更新しました。',mgBackList:'この予約に戻る',mgNewBook:'新しくレッスンを予約する',mgSlotTaken:'この枠はたった今埋まりました。別の枠をお選びください。',
+  doneRef:'予約番号',dManage:'この予約を管理する（キャンセル・日程変更）'
 },
 en:{
   appSub:'Online booking',roleStudent:'Student booking page',roleTeacher:'Teacher dashboard',reset:'Reset demo data',
   protoNote:'Prototype: use the buttons above to switch between the student and teacher views. Payment is simulated and nothing is charged. Data stays in this browser only.',
-  footNote:'Available times = the teacher’s weekly hours − days off + extra openings − existing bookings (with a 10-minute break on each side). Lessons must be booked at least 12 hours ahead.',
+  footNote:'Available times = the teacher’s weekly hours − days off + extra openings − existing bookings (with a 10-minute break on each side). Lessons start on the hour and must be booked at least 12 hours ahead. Times when the teacher has an event on their Google Calendar are not offered.',
   step1:'Course',step2:'Time',step3:'Details',step4:'Payment',
   sumTitle:'Booking summary',sumCourse:'Course',sumTime:'Time',sumTaiwan:'Taiwan time',sumNone:'Not selected',
   s1Title:'Which lesson would you like?',s1Policy:'Cancellation policy (sample): full refund if you cancel at least 24 hours before the lesson.',
@@ -305,11 +338,25 @@ en:{
   payFail:'Payment failed: the card was declined. Your slot is still held until the countdown ends, so you can try another payment method.',
   cvsNote:'In a real setup, convenience-store and ATM payments are confirmed only after you pay, so the hold lasts longer (e.g. 3 days). Here it is treated as instant.',
   processing:'Processing…',payBtn:'Pay {price}',simFail:'Simulate failed payment',
-  expTitle:'Your hold has expired',expBody:'So that other students can book, slots left unpaid for 15 minutes are released. Please choose a time again.',expBtn:'Choose a time again',
+  expTitle:'Your hold has expired',expBody:'So that other students can book, slots left unpaid for 15 minutes are released. Please choose a time again.',expBtn:'Choose a time again',conflictTitle:'This time is no longer available',conflictBody:'The teacher just added another commitment at this time, so the lesson can’t take place then. You have not been charged. Please choose another time.',
   doneTitle:'Booking confirmed',doneMail:'A confirmation email was sent to {email} (not actually sent in this prototype)',dCourse:'Course',dTime:'Time',dTaiwan:'Taiwan time',dLink:'Lesson link',dLinkDemo:'Demo link, not a real meeting room',dPay:'Payment',
   dReminder:'You can cancel or reschedule for free up to 24 hours before the lesson.',dAnother:'Book another lesson',dSeeTeacher:'See this booking in the teacher dashboard',mins:'{n} min',
   toastReset:'Demo data has been reset',notFound:'Booking not found.',stampAria:'Booking confirmed stamp',
-  m_card:'Credit card (Visa / Mastercard / JCB)',m_linepay:'LINE Pay',m_cvs:'Convenience store',m_atm:'ATM transfer',m_paypal:'PayPal'
+  m_card:'Credit card (Visa / Mastercard / JCB)',m_linepay:'LINE Pay',m_cvs:'Convenience store',m_atm:'ATM transfer',m_paypal:'PayPal',
+  navBook:'Book a lesson',navManage:'Manage my booking',
+  mgTitle:'Find and manage your booking',mgIntro:'Enter the email you booked with and your booking number to view, reschedule or cancel. The booking number is shown on the confirmation page and in your confirmation email.',
+  mgHint:'Demo tip: the booking number appears on the confirmation page, and in the teacher dashboard’s booking details (e.g. the one for ming@example.com).',
+  mgEmail:'Email',mgRef:'Booking number',mgFind:'Find booking',mgNotFound:'No matching booking found. Please check your email and booking number.',
+  mgYour:'Your booking',mgRefLabel:'Booking number',st_confirmed:'Confirmed',st_completed:'Completed',st_cancelled:'Cancelled',
+  mgResched:'Reschedule',mgCancel:'Cancel booking',mgCancelNoRefund:'Cancel (no refund)',
+  mgLocked:'The lesson starts in less than 24 hours, so it can’t be rescheduled online and cancelling won’t be refunded. If you have special circumstances, please contact the teacher directly.',
+  mgPast:'This lesson has already taken place.',mgCancelledInfo:'This booking has been cancelled.',
+  mgCancelAskFull:'Cancel this lesson? It starts in more than 24 hours, so you will get a full refund of {price}.',mgCancelAskNo:'The lesson starts in less than 24 hours, so cancelling will not be refunded. Cancel anyway?',
+  mgCancelYes:'Yes, cancel',mgKeep:'Keep booking',mgCancelledTitle:'Booking cancelled',
+  mgRefundFull:'Your {price} refund will go back to the original payment method within 5–10 business days (sample).',mgRefundNone:'Under the cancellation policy, this lesson is not refunded.',
+  mgReschedTitle:'Choose a new time',mgReschedOk:'Move to this time',mgReschedDoneTitle:'Booking rescheduled',mgOld:'Before',mgNew:'After',
+  mgNotified:'The teacher has been notified and the calendar has been updated.',mgBackList:'Back to this booking',mgNewBook:'Book a new lesson',mgSlotTaken:'That slot was just taken. Please choose another.',
+  doneRef:'Booking number',dManage:'Manage this booking (cancel / reschedule)'
 }};
 var TZNAMES={
   'Asia/Taipei':{zh:'台灣',ja:'台湾',en:'Taiwan'},
@@ -407,13 +454,19 @@ function freshState(){
         desc:{ja:'JLPTの作文や面接練習など、じっくり取り組みたい方に',zh:'JLPT 作文、面試練習等需要較長時間的內容',en:'For JLPT writing, interview practice and other longer sessions'}}
     ],
     rules:{0:[],1:[{s:'19:00',e:'22:00'}],2:[{s:'20:00',e:'22:00'}],3:[{s:'19:00',e:'22:00'}],4:[{s:'20:00',e:'22:00'}],5:[],6:[{s:'10:00',e:'12:00'},{s:'14:00',e:'18:00'}]},
-    exceptions:[],bookings:[],seq:1
+    exceptions:[],bookings:[],seq:1,
+    gcal:{connected:false,account:'',block:true,push:true,events:[],seq:1,lastSync:null}
   };
 }
 function courseById(id){return S.courses.filter(function(c){return c.id===id;})[0]||S.courses[0];}
+function newRef(){
+  var ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',r;
+  do{r='';for(var i=0;i<6;i++)r+=ch[Math.floor(Math.random()*ch.length)];}while(S.bookings.some(function(b){return b.ref===r;}));
+  return r;
+}
 function addBooking(o){
   var c=courseById(o.courseId);
-  var b={id:'B'+(S.seq++),courseId:c.id,courseName:c.name,price:c.price,start:o.start,end:o.start+c.min*MIN,name:o.name,email:o.email,tz:o.tz,note:o.note||'',status:o.status,createdAt:Date.now(),expires:o.expires||null,paidAt:o.paidAt||null,method:o.method||null,link:o.link||null};
+  var b={id:'B'+(S.seq++),ref:newRef(),courseId:c.id,courseName:c.name,price:c.price,start:o.start,end:o.start+c.min*MIN,name:o.name,email:o.email,tz:o.tz,note:o.note||'',status:o.status,createdAt:Date.now(),expires:o.expires||null,paidAt:o.paidAt||null,method:o.method||null,link:o.link||null};
   S.bookings.push(b);return b;
 }
 function fakeLink(){
@@ -441,16 +494,25 @@ function windowsFor(ymd){
   return w.sort(function(a,b){return a.s-b.s;});
 }
 function isActive(b,now){return b.status==='confirmed'||b.status==='completed'||(b.status==='pending'&&b.expires>now);}
-function isFree(start,end){
-  var now=Date.now();
-  return !S.bookings.some(function(b){return isActive(b,now)&&start<b.end+BUFFER&&end+BUFFER>b.start;});
+function evRange(ev){
+  if(ev.allDay){var a=tpTs(ev.date,'00:00');return {a:a,b:a+24*HOUR,buf:0};}
+  return {a:tpTs(ev.date,ev.start),b:tpTs(ev.date,ev.end),buf:BUFFER};
 }
-function slotsFor(course){
+function gcalBusy(start,end){
+  var g=S.gcal;if(!g||!g.connected||!g.block)return false;
+  return g.events.some(function(ev){var r=evRange(ev);return start<r.b+r.buf&&end+r.buf>r.a;});
+}
+function isFree(start,end,ignoreId){
+  var now=Date.now();
+  if(gcalBusy(start,end))return false;
+  return !S.bookings.some(function(b){return b.id!==ignoreId&&isActive(b,now)&&start<b.end+BUFFER&&end+BUFFER>b.start;});
+}
+function slotsFor(course,ignoreId){
   var now=Date.now(),t0=tpYmd(now),dur=course.min*MIN,seen={},out=[];
   for(var i=0;i<HORIZON;i++){
     windowsFor(addDays(t0,i)).forEach(function(w){
-      for(var x=w.s;x+dur<=w.e;x+=STEP){
-        if(x>=now+NOTICE&&!seen[x]&&isFree(x,x+dur)){seen[x]=1;out.push(x);}
+      for(var x=Math.ceil(w.s/HOUR)*HOUR;x+dur<=w.e;x+=STEP){
+        if(x>=now+NOTICE&&!seen[x]&&isFree(x,x+dur,ignoreId)){seen[x]=1;out.push(x);}
       }
     });
   }
@@ -500,7 +562,7 @@ function tzOptionsHtml(sel){
   return html;
 }
 function freshUI(){
-  return {role:'student',lang:detectLang(),authed:false,fails:0,lockUntil:0,loginErr:'',loginEmail:'',
+  return {role:'student',sview:'book',mg:{email:'',ref:'',id:null,mode:'view',err:''},checking:false,lang:detectLang(),authed:false,fails:0,lockUntil:0,loginErr:'',loginEmail:'',
     step:1,courseId:'trial',tz:detected,selDate:null,selSlot:null,form:{name:'',email:'',note:''},errors:{},holdId:null,method:'card',paying:false,payError:false,doneId:null,
     tab:'calendar',weekOff:0,filter:'all',modal:null,exMsg:''};
 }
@@ -535,8 +597,8 @@ function s1(){
       return '<button class="course" data-act="pickCourse" data-id="'+c.id+'"><span class="cn">'+esc(L(c.name))+'</span><span class="cd">'+esc(L(c.desc))+'</span><span class="cp">'+money(c.price)+'</span></button>';
     }).join('')+'</div><p class="muted">'+t('s1Policy')+'</p></div>';
 }
-function s2(){
-  var c=currentCourse(),slots=slotsFor(c),groups={};
+function pickerHtml(c,ignoreId){
+  var slots=slotsFor(c,ignoreId),groups={};
   slots.forEach(function(x){var k=localKey(x,U.tz);(groups[k]=groups[k]||[]).push(x);});
   var keys=Object.keys(groups).sort();
   if(U.selSlot&&slots.indexOf(U.selSlot)<0)U.selSlot=null;
@@ -554,8 +616,11 @@ function s2(){
       return '<button class="slot" data-act="pickSlot" data-t="'+x+'" aria-pressed="'+(x===U.selSlot)+'">'+localTime(x,U.tz)+(U.tz!==TP?'<small>'+t('taiwanShort')+' '+localTime(x,TP)+'</small>':'')+'</button>';
     }).join('')+'</div>';
   }
-  return '<div class="panel"><h2>'+t('s2Title')+'</h2>'+
-    '<div class="field" style="max-width:420px"><label for="tzSel">'+t('tzLabel')+'</label><select id="tzSel" data-bind="tz">'+tzOpts+'</select></div>'+body+
+  return '<div class="field" style="max-width:420px"><label for="tzSel">'+t('tzLabel')+'</label><select id="tzSel" data-bind="tz">'+tzOpts+'</select></div>'+body;
+}
+function s2(){
+  var c=currentCourse(),h=pickerHtml(c,null);
+  return '<div class="panel"><h2>'+t('s2Title')+'</h2>'+h+
     '<div class="actions"><button class="btn" data-act="back">'+t('back')+'</button><button class="btn primary" data-act="goInfo"'+(U.selSlot?'':' disabled')+'>'+t('next')+'</button></div></div>';
 }
 function s3(){
@@ -569,6 +634,9 @@ function s3(){
 }
 function s4(){
   var b=holdBooking();
+  if(U.conflict){
+    return '<div class="panel"><h2>'+t('conflictTitle')+'</h2><p>'+t('conflictBody')+'</p><div class="actions"><span></span><button class="btn primary" data-act="restartTime">'+t('expBtn')+'</button></div></div>';
+  }
   if(!b||b.status!=='pending'||b.expires<=Date.now()){
     return '<div class="panel"><h2>'+t('expTitle')+'</h2><p>'+t('expBody')+'</p><div class="actions"><span></span><button class="btn primary" data-act="restartTime">'+t('expBtn')+'</button></div></div>';
   }
@@ -591,23 +659,74 @@ function stampSvg(){
 function s5(){
   var b=S.bookings.filter(function(x){return x.id===U.doneId;})[0];
   if(!b)return '<div class="panel"><p>'+t('notFound')+'</p></div>';
-  var rows='<dt>'+t('dCourse')+'</dt><dd>'+esc(L(b.courseName))+'</dd><dt>'+t('dTime')+'</dt><dd>'+esc(fmtDT(b.start,U.tz))+'（'+t('mins',{n:Math.round((b.end-b.start)/MIN)})+'）</dd>';
+  var rows='<dt>'+t('doneRef')+'</dt><dd><b>'+esc(b.ref)+'</b></dd><dt>'+t('dCourse')+'</dt><dd>'+esc(L(b.courseName))+'</dd><dt>'+t('dTime')+'</dt><dd>'+esc(fmtDT(b.start,U.tz))+'（'+t('mins',{n:Math.round((b.end-b.start)/MIN)})+'）</dd>';
   if(U.tz!==TP)rows+='<dt>'+t('dTaiwan')+'</dt><dd>'+esc(fmtDT(b.start,TP))+'</dd>';
   rows+='<dt>'+t('dLink')+'</dt><dd>'+esc(b.link)+'<div class="muted">'+t('dLinkDemo')+'</div></dd><dt>'+t('dPay')+'</dt><dd>'+money(b.price)+'（'+t('m_'+b.method)+'）</dd>';
   return '<div class="panel done">'+stampSvg()+'<h2 style="margin-bottom:6px">'+t('doneTitle')+'</h2><p class="muted">'+t('doneMail',{email:esc(b.email)})+'</p><dl class="kv">'+rows+'</dl>'+
-    '<p class="muted">'+t('dReminder')+'</p><div class="row" style="justify-content:center;margin-top:18px"><button class="btn" data-act="restart">'+t('dAnother')+'</button><button class="btn primary" data-act="role" data-v="teacher">'+t('dSeeTeacher')+'</button></div></div>';
+    '<p class="muted">'+t('dReminder')+'</p><div class="row" style="justify-content:center;margin-top:18px"><button class="btn" data-act="restart">'+t('dAnother')+'</button><button class="btn" data-act="mgOpen" data-id="'+b.id+'">'+t('dManage')+'</button><button class="btn primary" data-act="role" data-v="teacher">'+t('dSeeTeacher')+'</button></div></div>';
 }
-function renderStudent(){
+function renderBook(){
   if(U.step===5)return s5();
   var main=[null,s1,s2,s3,s4][U.step]();
   if(U.step===1)return stepsHtml()+main;
   return stepsHtml()+'<div class="layout">'+main+summaryHtml()+'</div>';
 }
 
+
+function navHtml(){
+  return '<div class="tabs" role="tablist"><button role="tab" data-act="sview" data-v="book" aria-selected="'+(U.sview==='book')+'">'+t('navBook')+'</button><button role="tab" data-act="sview" data-v="manage" aria-selected="'+(U.sview==='manage')+'">'+t('navManage')+'</button></div>';
+}
+function mgBooking(){return S.bookings.filter(function(b){return b.id===U.mg.id;})[0];}
+function lookupHtml(){
+  return '<div class="panel" style="max-width:560px"><h2>'+t('mgTitle')+'</h2><p class="muted">'+t('mgIntro')+'</p>'+
+    '<form id="mgForm" novalidate><div class="field"><label for="mgEmail">'+t('mgEmail')+'</label><input type="email" id="mgEmail" data-mg="email" value="'+esc(U.mg.email)+'" autocomplete="email"></div>'+
+    '<div class="field"><label for="mgRef">'+t('mgRef')+'</label><input type="text" id="mgRef" data-mg="ref" value="'+esc(U.mg.ref)+'" autocomplete="off" style="text-transform:uppercase;letter-spacing:.12em;max-width:200px"></div>'+
+    (U.mg.err?'<div class="err" role="alert" style="margin-bottom:12px">'+t(U.mg.err)+'</div>':'')+
+    '<button type="submit" class="btn primary">'+t('mgFind')+'</button></form><div class="notice" style="margin-top:18px">'+t('mgHint')+'</div></div>';
+}
+function renderManage(){
+  var mg=U.mg,b=mg.id?mgBooking():null;
+  if(!b)return lookupHtml();
+  var now=Date.now(),future=b.start>now,canChange=b.start-now>=CHANGE_LIMIT,st=b.status,mins=Math.round((b.end-b.start)/MIN);
+  function rowsFor(ts){
+    var r='<dt>'+t('mgRefLabel')+'</dt><dd><b>'+esc(b.ref)+'</b></dd><dt>'+t('dCourse')+'</dt><dd>'+esc(L(b.courseName))+'</dd><dt>'+t('dTime')+'</dt><dd>'+esc(fmtDT(ts,U.tz))+'（'+t('mins',{n:mins})+'）</dd>';
+    if(U.tz!==TP)r+='<dt>'+t('dTaiwan')+'</dt><dd>'+esc(fmtDT(ts,TP))+'</dd>';
+    return r+'<dt>'+t('dPay')+'</dt><dd>'+money(b.price)+'</dd>';
+  }
+  var head='<div class="panel"><div class="row" style="justify-content:space-between;align-items:flex-start"><h2 style="margin:0">'+t('mgYour')+'</h2><span class="badge '+st+'">'+t('st_'+st)+'</span></div><dl class="kv" style="margin-top:16px">'+rowsFor(b.start)+'</dl>';
+  if(mg.mode==='resched'){
+    var h=pickerHtml({min:mins},b.id);
+    return '<div class="panel"><h2>'+t('mgReschedTitle')+'</h2><p class="muted">'+t('mgOld')+'：'+esc(fmtDT(b.start,U.tz))+'</p>'+h+(mg.err?'<div class="err" role="alert" style="margin-top:10px">'+t(mg.err)+'</div>':'')+
+      '<div class="actions"><button class="btn" data-act="mgView">'+t('back')+'</button><button class="btn primary" data-act="doResched"'+(U.selSlot?'':' disabled')+'>'+t('mgReschedOk')+'</button></div></div>';
+  }
+  if(mg.mode==='reschedDone'){
+    return '<div class="panel"><h2>'+t('mgReschedDoneTitle')+'</h2><dl class="kv" style="margin:14px 0"><dt>'+t('mgOld')+'</dt><dd>'+esc(fmtDT(mg.oldStart,U.tz))+'</dd><dt>'+t('mgNew')+'</dt><dd><b>'+esc(fmtDT(b.start,U.tz))+'</b>'+(U.tz!==TP?'<div class="muted">'+t('dTaiwan')+' '+esc(fmtDT(b.start,TP))+'</div>':'')+'</dd></dl><p class="muted">'+t('mgNotified')+'</p><div class="row" style="margin-top:16px"><button class="btn" data-act="mgView">'+t('mgBackList')+'</button></div></div>';
+  }
+  if(mg.mode==='cancelled'){
+    return '<div class="panel"><h2>'+t('mgCancelledTitle')+'</h2><p>'+(b.refund==='full'?t('mgRefundFull',{price:money(b.price)}):t('mgRefundNone'))+'</p><p class="muted">'+t('mgNotified')+'</p><div class="row" style="margin-top:16px"><button class="btn primary" data-act="mgNewBook">'+t('mgNewBook')+'</button></div></div>';
+  }
+  var body='';
+  if(mg.mode==='cancelConfirm'){
+    body='<div class="fail" style="margin-top:18px">'+(canChange?t('mgCancelAskFull',{price:money(b.price)}):t('mgCancelAskNo'))+'</div><div class="row"><button class="btn danger" data-act="doStudentCancel">'+t('mgCancelYes')+'</button><button class="btn" data-act="mgView">'+t('mgKeep')+'</button></div>';
+  } else if(st==='confirmed'&&future){
+    if(canChange)body='<div class="row" style="margin-top:20px"><button class="btn primary" data-act="mgResched">'+t('mgResched')+'</button><button class="btn danger" data-act="mgAskCancel">'+t('mgCancel')+'</button></div><p class="muted" style="margin-top:12px">'+t('s1Policy')+'</p>';
+    else body='<div class="hold" style="margin-top:18px">'+t('mgLocked')+'</div><div class="row"><button class="btn danger" data-act="mgAskCancel">'+t('mgCancelNoRefund')+'</button></div>';
+  } else if(st==='cancelled'){
+    body='<p class="muted" style="margin-top:16px">'+t('mgCancelledInfo')+' '+(b.refund==='full'?t('mgRefundFull',{price:money(b.price)}):t('mgRefundNone'))+'</p>';
+  } else {
+    body='<p class="muted" style="margin-top:16px">'+t('mgPast')+'</p>';
+  }
+  return head+body+'</div>';
+}
+function renderStudent(){
+  return navHtml()+(U.sview==='manage'?renderManage():renderBook());
+}
+
 /* ---------- teacher: login (Japanese) ---------- */
 function renderLogin(){
   var now=Date.now(),locked=U.lockUntil>now,msg='';
   if(locked)msg='<div class="err" role="alert">試行回数が上限に達しました。<span id="lockSec">'+Math.ceil((U.lockUntil-now)/1000)+'</span>秒後に再試行してください。</div>';
+  else if(U.loginErr==='nocrypto')msg='<div class="err" role="alert">この環境ではログイン処理を実行できません（HTTPSのページで開いてください）。</div>';
   else if(U.loginErr==='bad')msg='<div class="err" role="alert">メールアドレスまたはパスワードが正しくありません（あと'+(5-U.fails)+'回で一時ロックされます）。</div>';
   return '<div class="panel login"><h2>先生ログイン</h2><p class="muted">管理画面を開くにはログインが必要です。</p>'+
     '<form id="loginForm" autocomplete="on" novalidate>'+
@@ -619,10 +738,14 @@ function renderLogin(){
 }
 
 /* ---------- teacher views (Japanese) ---------- */
+function jlabel(b,st){
+  if(st==='cancelled')return (b.refund==='none'?'キャンセル（返金なし）':'キャンセル・返金済み')+(b.cancelledBy==='student'?'（生徒）':'');
+  return JSTATUS[st];
+}
 var JSTATUS={pending:'支払い待ち',confirmed:'確定',completed:'実施済み',cancelled:'キャンセル・返金済み',expired:'期限切れ（枠を解放）'};
 function monthRevenue(){
   var ym=tpYmd(Date.now()).slice(0,7);
-  return S.bookings.filter(function(b){return (b.status==='confirmed'||b.status==='completed')&&b.paidAt&&tpYmd(b.paidAt).slice(0,7)===ym;}).reduce(function(a,b){return a+b.price;},0);
+  return S.bookings.filter(function(b){return (b.status==='confirmed'||b.status==='completed'||(b.status==='cancelled'&&b.refund==='none'))&&b.paidAt&&tpYmd(b.paidAt).slice(0,7)===ym;}).reduce(function(a,b){return a+b.price;},0);
 }
 function statsHtml(){
   var now=Date.now(),wkEnd=now+7*24*HOUR;
@@ -638,8 +761,11 @@ function calendarHtml(){
       var dl=dayLabel(ymd),items=[];
       var ex=S.exceptions.filter(function(e){return e.date===ymd;});
       windowsFor(ymd).forEach(function(w){items.push({t:w.s,h:'<div class="win'+(w.extra?' extra':'')+'">'+(w.extra?'臨時 ':'受付 ')+localTime(w.s,TP)+'–'+localTime(w.e,TP)+'</div>'});});
+      if(S.gcal.connected)S.gcal.events.filter(function(ev){return ev.date===ymd;}).forEach(function(ev){
+        var r=evRange(ev);items.push({t:r.a-2,h:'<div class="gev">Google '+(ev.allDay?'終日':ev.start+'–'+ev.end)+' '+esc(ev.title)+'</div>'});
+      });
       S.bookings.filter(function(b){return isActive(b,now)&&tpYmd(b.start)===ymd;}).forEach(function(b){
-        items.push({t:b.start-1,h:'<button class="chip st-'+b.status+'" data-act="openBooking" data-id="'+b.id+'">'+localTime(b.start,TP)+' '+esc(b.name)+'<small>'+esc(L(b.courseName))+(b.status==='pending'?'・支払い待ち':'')+'</small></button>'});
+        items.push({t:b.start-1,h:'<button class="chip st-'+b.status+'" data-act="openBooking" data-id="'+b.id+'">'+localTime(b.start,TP)+' '+esc(b.name)+'<small>'+esc(L(b.courseName))+(b.status==='pending'?'・支払い待ち':'')+(b.gcal?'・Google済':'')+'</small></button>'});
       });
       items.sort(function(a,b){return a.t-b.t;});
       cols+='<div class="day'+(ymd===today?' today':'')+'"><div class="dh"><span>'+dl.wd+'曜</span><b>'+dl.md+'</b></div>'+
@@ -650,7 +776,7 @@ function calendarHtml(){
   var a=dayLabel(mon),z=dayLabel(addDays(mon,6));
   return '<div class="wkhead"><div class="row"><button class="btn sm" data-act="week" data-d="-1">前の週</button><button class="btn sm" data-act="week" data-d="0">今週</button><button class="btn sm" data-act="week" data-d="1">次の週</button></div><b>'+a.md+' – '+z.md+'（台湾時間）</b></div>'+
     '<div class="wkscroll"><div class="week">'+cols+'</div></div>'+
-    '<div class="legend"><span>塗りつぶし：確定済み</span><span>黄色：枠を確保中（支払い待ち）</span><span>枠線：実施済み</span><span>破線：受付時間</span></div>';
+    '<div class="legend"><span>塗りつぶし：確定済み</span><span>黄色：枠を確保中（支払い待ち）</span><span>枠線：実施済み</span><span>破線：受付時間</span><span>斜線：Googleカレンダーの予定（予約不可）</span></div>';
 }
 function bookingsHtml(){
   var now=Date.now(),F=U.filter;
@@ -665,7 +791,7 @@ function bookingsHtml(){
   return '<div class="filters" role="group" aria-label="絞り込み">'+fl.map(function(f){return '<button data-act="filter" data-v="'+f[0]+'" aria-pressed="'+(F===f[0])+'">'+f[1]+'</button>';}).join('')+'</div>'+
     (list.length?'<div class="blist">'+list.map(function(b){
       var st=(b.status==='pending'&&b.expires<=now)?'expired':b.status;
-      return '<button class="brow'+((st==='cancelled'||st==='expired')?' dim':'')+'" data-act="openBooking" data-id="'+b.id+'"><span>'+esc(fmtDT(b.start,TP))+'</span><span>'+esc(b.name)+'<small>'+esc(L(b.courseName))+'・'+esc(b.tz===TP?'台湾':b.tz)+'</small></span><span class="c3">'+money(b.price)+'</span><span class="badge '+st+'">'+JSTATUS[st]+'</span></button>';
+      return '<button class="brow'+((st==='cancelled'||st==='expired')?' dim':'')+'" data-act="openBooking" data-id="'+b.id+'"><span>'+esc(fmtDT(b.start,TP))+'</span><span>'+esc(b.name)+'<small>'+esc(L(b.courseName))+'・'+esc(b.tz===TP?'台湾':b.tz)+'</small></span><span class="c3">'+money(b.price)+'</span><span class="badge '+st+'">'+jlabel(b,st)+'</span></button>';
     }).join('')+'</div>':'<div class="empty">該当する予約はありません。</div>');
 }
 function rulesHtml(){
@@ -676,7 +802,7 @@ function rulesHtml(){
     }).join(''):'<span class="muted" style="line-height:2.4">休み</span>')+'</div><button class="btn sm" data-act="addRange" data-d="'+d+'">時間帯を追加</button></div>';
   }).join('');
   var exs=S.exceptions.slice().sort(function(a,b){return a.date<b.date?-1:1;});
-  return '<div class="layout"><div class="panel"><h3>毎週の受付時間（台湾時間）</h3><p class="muted">変更は生徒の予約ページにすぐ反映されます。すでに入っている予約には影響しません。</p>'+rows+'</div>'+
+  return '<div class="layout"><div class="panel"><h3>毎週の受付時間（台湾時間）</h3><p class="muted">レッスンは毎時0分に開始します（例：19:00、20:00）。変更は生徒の予約ページにすぐ反映され、すでに入っている予約には影響しません。</p>'+rows+'</div>'+
     '<div class="panel"><h3>特定の日</h3><div class="field"><label for="exDate">日付</label><input type="date" id="exDate" min="'+tpYmd(Date.now())+'"></div>'+
     '<div class="field"><label for="exType">種類</label><select id="exType"><option value="closed">終日お休み</option><option value="extra">臨時で受付</option></select></div>'+
     '<div class="grid2 hidden" id="exTimes"><div class="field"><label for="exS">開始</label><input type="time" id="exS" step="900" value="14:00"></div><div class="field"><label for="exE">終了</label><input type="time" id="exE" step="900" value="17:00"></div></div>'+
@@ -695,11 +821,52 @@ function coursesHtml(){
         '</div></div>';
     }).join('')+'</div>';
 }
+function seedGcalEvents(){
+  var t0=tpYmd(Date.now()),out=[],haveDay=false,haveAll=false;
+  for(var i=1;i<28&&(!haveDay||!haveAll);i++){
+    var ymd=addDays(t0,i),w=windowsFor(ymd);
+    if(!w.length)continue;
+    if(!haveDay&&wday(ymd)!==6){
+      out.push({id:'G'+(S.gcal.seq++),title:'歯科検診',date:ymd,allDay:false,start:localTime(w[0].s+HOUR,TP),end:localTime(w[0].s+2*HOUR,TP)});haveDay=true;
+    } else if(!haveAll&&wday(ymd)===6&&i>7){
+      out.push({id:'G'+(S.gcal.seq++),title:'家族旅行',date:ymd,allDay:true,start:'',end:''});haveAll=true;
+    }
+  }
+  return out;
+}
+function overlapBookings(ev){
+  var r=evRange(ev),now=Date.now();
+  return S.bookings.filter(function(x){return x.status==='confirmed'&&x.end>now&&x.start<r.b&&x.end>r.a;});
+}
+function gcalHtml(){
+  var g=S.gcal;
+  if(!g.connected){
+    return '<div class="panel" style="max-width:640px"><h3>Googleカレンダー連携</h3><p>連携すると、次のように動作します。</p><ul class="plain"><li>Googleカレンダーに予定を入れた時間は、生徒の予約ページに表示されなくなります。</li><li>生徒が予約・支払いを完了すると、Googleカレンダーに自動で予定が追加されます。</li><li>予約をキャンセルすると、カレンダー上の予定も削除されます。</li><li>予定のタイトルや内容は生徒には見えません。使うのは「その時間が空いているか」だけです。</li></ul><button class="btn primary" data-act="gConnect">Googleカレンダーと連携する</button><p class="muted" style="margin-top:12px">※このデモでは実際のGoogleアカウントには接続せず、動作を模擬します。</p></div>';
+  }
+  var evs=g.events.slice().sort(function(a,b){return (a.date+(a.start||''))<(b.date+(b.start||''))?-1:1;});
+  var msg='';
+  if(U.gMsg){var k=U.gMsg.split(':')[0],tx=U.gMsg.slice(k.length+1);msg='<div class="'+(k==='ok'?'notice':'fail')+'" style="margin-top:12px">'+esc(tx)+'</div>';}
+  var left='<div class="panel"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><h3 style="margin-bottom:4px">Googleカレンダー連携</h3><span class="badge confirmed">連携中</span> <span class="muted">'+esc(g.account)+'</span></div><button class="btn sm" data-act="gDisconnect">連携を解除</button></div>'+
+    '<p class="muted" style="margin-top:10px">最終同期：'+(g.lastSync?localTime(g.lastSync,TP):'—')+'（台湾時間）。本番では、予定の変更を検知して自動で同期します。</p>'+
+    '<label class="chk"><input type="checkbox" data-gset="block"'+(g.block?' checked':'')+'><span>Googleカレンダーに予定がある時間は予約を受け付けない</span></label>'+
+    '<label class="chk"><input type="checkbox" data-gset="push"'+(g.push?' checked':'')+'><span>確定した予約をGoogleカレンダーに自動で追加する</span></label>'+
+    '<h3 style="margin-top:22px">Googleカレンダーの予定</h3><ul class="exlist">'+(evs.length?evs.map(function(ev){
+      var dl=dayLabel(ev.date),ov=overlapBookings(ev);
+      return '<li><span><b>'+esc(ev.title)+'</b><br><span class="muted">'+dl.md+'（'+dl.wd+'）'+(ev.allDay?'終日':ev.start+'–'+ev.end)+'</span>'+(ov.length?'<br><span class="err">確定済みの予約と重なっています（'+esc(ov.map(function(x){return x.name;}).join('、'))+'さん）</span>':'')+'</span><button class="lnk" data-act="gDel" data-id="'+ev.id+'">削除</button></li>';
+    }).join(''):'<li class="muted">予定はありません</li>')+'</ul></div>';
+  var right='<div class="panel"><h3>予定を追加（デモ操作）</h3><p class="muted">本来はGoogleカレンダーのアプリで行う操作です。ここで追加すると、その時間が生徒の予約ページから消えることを確認できます。</p>'+
+    '<div class="field"><label for="gTitle">タイトル</label><input type="text" id="gTitle" placeholder="例：歯科検診"></div>'+
+    '<div class="field"><label for="gDate">日付</label><input type="date" id="gDate" min="'+tpYmd(Date.now())+'"></div>'+
+    '<label class="chk"><input type="checkbox" id="gAll"><span>終日</span></label>'+
+    '<div class="grid2" id="gTimes"><div class="field"><label for="gS">開始</label><input type="time" id="gS" step="900" value="19:00"></div><div class="field"><label for="gE">終了</label><input type="time" id="gE" step="900" value="20:00"></div></div>'+
+    '<button class="btn primary" data-act="gAdd">追加</button>'+msg+'</div>';
+  return '<div class="layout">'+left+right+'</div>';
+}
 function modalHtml(){
   if(!U.modal)return '';
   var b=S.bookings.filter(function(x){return x.id===U.modal.id;})[0];if(!b)return '';
   var now=Date.now(),st=(b.status==='pending'&&b.expires<=now)?'expired':b.status;
-  var rows='<dt>状態</dt><dd><span class="badge '+st+'">'+JSTATUS[st]+'</span></dd>'+
+  var rows='<dt>状態</dt><dd><span class="badge '+st+'">'+jlabel(b,st)+'</span></dd><dt>予約番号</dt><dd>'+esc(b.ref)+'</dd>'+
     '<dt>コース</dt><dd>'+esc(L(b.courseName))+'（'+Math.round((b.end-b.start)/MIN)+'分）</dd>'+
     '<dt>台湾時間</dt><dd>'+esc(fmtDT(b.start,TP))+'</dd>';
   if(b.tz!==TP)rows+='<dt>生徒の現地時間</dt><dd>'+esc(fmtDT(b.start,b.tz))+'（'+esc(b.tz)+'）</dd>';
@@ -707,6 +874,8 @@ function modalHtml(){
   if(b.note)rows+='<dt>生徒からのメモ</dt><dd>'+esc(b.note)+'</dd>';
   rows+='<dt>金額</dt><dd>'+money(b.price)+(b.method?'（'+esc(t('m_'+b.method))+'）':'')+'</dd>';
   if(b.link)rows+='<dt>レッスンのリンク</dt><dd>'+esc(b.link)+'</dd>';
+  if(b.gcal)rows+='<dt>Googleカレンダー</dt><dd>予定を追加済み</dd>';
+  if(b.rescheduled)rows+='<dt>日程変更</dt><dd>生徒が'+b.rescheduled+'回変更しました</dd>';
   var actions;
   if(U.modal.confirmCancel){
     actions='<p class="err" style="margin:0 0 10px">このレッスンをキャンセルしますか？返金済みとして記録し、枠を解放して、生徒に通知します。</p><div class="row"><button class="btn danger" data-act="doCancel" data-id="'+b.id+'">キャンセルして返金する</button><button class="btn" data-act="keepBooking">やめる</button></div>';
@@ -717,8 +886,8 @@ function modalHtml(){
 }
 function renderTeacher(){
   if(!U.authed)return renderLogin();
-  var tabs=[['calendar','カレンダー'],['bookings','予約一覧'],['rules','受付時間'],['courses','コースと料金']];
-  var body={calendar:calendarHtml,bookings:bookingsHtml,rules:rulesHtml,courses:coursesHtml}[U.tab]();
+  var tabs=[['calendar','カレンダー'],['bookings','予約一覧'],['rules','受付時間'],['courses','コースと料金'],['gcal','Googleカレンダー連携']];
+  var body={calendar:calendarHtml,bookings:bookingsHtml,rules:rulesHtml,courses:coursesHtml,gcal:gcalHtml}[U.tab]();
   return statsHtml()+'<div class="tabs" role="tablist">'+tabs.map(function(x){return '<button role="tab" data-act="tab" data-v="'+x[0]+'" aria-selected="'+(U.tab===x[0])+'">'+x[1]+'</button>';}).join('')+'</div>'+body+modalHtml();
 }
 
@@ -749,18 +918,49 @@ function dropHold(){
   if(b&&b.status==='pending'){S.bookings=S.bookings.filter(function(x){return x.id!==b.id;});save();}
   U.holdId=null;U.payError=false;U.paying=false;
 }
+function hashLogin(email,pw){
+  var enc=new TextEncoder();
+  return crypto.subtle.importKey('raw',enc.encode(email+'\n'+pw),'PBKDF2',false,['deriveBits']).then(function(k){
+    return crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(AUTH_SALT),iterations:AUTH_ITER,hash:'SHA-256'},k,256);
+  }).then(function(buf){
+    return Array.prototype.map.call(new Uint8Array(buf),function(x){return ('0'+x.toString(16)).slice(-2);}).join('');
+  });
+}
 function doLogin(){
-  var now=Date.now();if(U.lockUntil>now)return;
+  var now=Date.now();if(U.lockUntil>now||U.checking)return;
   var em=$('#lgEmail').value.trim().toLowerCase(),pw=$('#lgPass').value;
   U.loginEmail=em;
-  if(em===DEMO_EMAIL&&pw===DEMO_PASS){U.authed=true;U.fails=0;U.loginErr='';U.lockUntil=0;U.tab='calendar';toast('ログインしました');}
-  else{U.fails++;if(U.fails>=5){U.lockUntil=now+30000;U.fails=0;U.loginErr='lock';}else U.loginErr='bad';}
-  render();
+  if(!(window.crypto&&crypto.subtle)){U.loginErr='nocrypto';render();return;}
+  U.checking=true;
+  hashLogin(em,pw).then(function(hx){
+    U.checking=false;
+    if(hx===AUTH_HASH){U.authed=true;U.fails=0;U.loginErr='';U.lockUntil=0;U.tab='calendar';toast('ログインしました');}
+    else{U.fails++;if(U.fails>=5){U.lockUntil=Date.now()+30000;U.fails=0;U.loginErr='lock';}else U.loginErr='bad';}
+    render();
+  }).catch(function(){U.checking=false;U.loginErr='nocrypto';render();});
 }
 function act(a,el){
   var d=el.dataset;
   switch(a){
     case 'role':U.role=d.v;U.modal=null;break;
+    case 'sview':U.sview=d.v;break;
+    case 'mgOpen':{var ob=S.bookings.filter(function(x){return x.id===d.id;})[0];if(ob){U.sview='manage';U.mg={email:ob.email,ref:ob.ref,id:ob.id,mode:'view',err:''};U.selSlot=null;U.selDate=null;}break;}
+    case 'mgView':U.mg.mode='view';U.mg.err='';U.selSlot=null;break;
+    case 'mgResched':U.mg.mode='resched';U.mg.err='';U.selSlot=null;U.selDate=null;break;
+    case 'mgAskCancel':U.mg.mode='cancelConfirm';break;
+    case 'doResched':{
+      var rb=mgBooking();if(!rb||!U.selSlot)break;
+      var rd=rb.end-rb.start;
+      if(rb.start-Date.now()<CHANGE_LIMIT||U.selSlot<Date.now()+NOTICE||!isFree(U.selSlot,U.selSlot+rd,rb.id)){U.mg.err='mgSlotTaken';U.selSlot=null;break;}
+      U.mg.oldStart=rb.start;rb.start=U.selSlot;rb.end=U.selSlot+rd;rb.rescheduled=(rb.rescheduled||0)+1;
+      U.mg.mode='reschedDone';U.mg.err='';U.selSlot=null;save();break;
+    }
+    case 'doStudentCancel':{
+      var cb=mgBooking();if(!cb||cb.status!=='confirmed')break;
+      cb.refund=(cb.start-Date.now()>=CHANGE_LIMIT)?'full':'none';
+      cb.status='cancelled';cb.cancelledBy='student';cb.gcal=false;U.mg.mode='cancelled';save();break;
+    }
+    case 'mgNewBook':U.sview='book';U.step=1;U.selSlot=null;U.selDate=null;U.holdId=null;U.doneId=null;U.form={name:'',email:'',note:''};U.errors={};break;
     case 'logout':U.authed=false;U.modal=null;U.loginEmail='';U.loginErr='';U.role='student';toast('Logged out / ログアウトしました');break;
     case 'forgot':toast('再設定用のリンクをメールで送信します（デモでは送信されません）');return;
     case 'reset':
@@ -777,8 +977,8 @@ function act(a,el){
       if(!U.selSlot||!isFree(U.selSlot,U.selSlot+dur)||U.selSlot<Date.now()+NOTICE){U.errors={slot:'errSlot'};U.selSlot=null;break;}
       var h=addBooking({courseId:c.id,start:U.selSlot,name:U.form.name.trim(),email:U.form.email.trim(),tz:U.tz,note:U.form.note.trim(),status:'pending',expires:Date.now()+HOLD});
       U.holdId=h.id;save();U.step=4;U.payError=false;break;
-    case 'backFromPay':dropHold();U.step=3;break;
-    case 'restartTime':dropHold();U.selSlot=null;U.step=2;break;
+    case 'backFromPay':dropHold();U.conflict=false;U.step=3;break;
+    case 'restartTime':dropHold();U.conflict=false;U.selSlot=null;U.step=2;break;
     case 'method':U.method=d.k;break;
     case 'payFail':U.payError=true;break;
     case 'pay':
@@ -786,11 +986,13 @@ function act(a,el){
       setTimeout(function(){
         var b=holdBooking();U.paying=false;
         if(!b||b.status!=='pending'||b.expires<=Date.now()){render();return;}
+        if(gcalBusy(b.start,b.end)){b.status='expired';U.conflict=true;save();render();return;}
         b.status='confirmed';b.paidAt=Date.now();b.method=U.method;b.link=fakeLink();b.expires=null;
+        if(S.gcal.connected&&S.gcal.push)b.gcal=true;
         save();U.doneId=b.id;U.holdId=null;U.step=5;render();
       },1300);
       return;
-    case 'restart':U.step=1;U.selSlot=null;U.selDate=null;U.holdId=null;U.doneId=null;U.form={name:'',email:'',note:''};U.errors={};break;
+    case 'restart':U.sview='book';U.step=1;U.selSlot=null;U.selDate=null;U.holdId=null;U.doneId=null;U.form={name:'',email:'',note:''};U.errors={};break;
     case 'tab':U.tab=d.v;U.exMsg='';break;
     case 'week':U.weekOff=d.d==='0'?0:U.weekOff+Number(d.d);break;
     case 'filter':U.filter=d.v;break;
@@ -802,8 +1004,24 @@ function act(a,el){
       S.bookings.forEach(function(b){if(b.id===d.id&&b.status==='confirmed')b.status='completed';});
       save();U.modal=null;toast('レッスン完了にしました');break;
     case 'doCancel':
-      S.bookings.forEach(function(b){if(b.id===d.id)b.status='cancelled';});
-      save();U.modal=null;toast('キャンセルし、返金済みにしました');break;
+      S.bookings.forEach(function(b){if(b.id===d.id){b.status='cancelled';b.refund='full';b.cancelledBy='teacher';}});
+      var wasG=false;S.bookings.forEach(function(b){if(b.id===d.id&&b.gcal){wasG=true;b.gcal=false;}});
+      save();U.modal=null;toast(wasG?'キャンセルし、返金済みにしました（Googleカレンダーの予定も削除しました）':'キャンセルし、返金済みにしました');break;
+    case 'gConnect':
+      S.gcal.connected=true;S.gcal.account='teacher@gmail.com';S.gcal.events=seedGcalEvents();S.gcal.lastSync=Date.now();U.gMsg='';save();toast('Googleカレンダーと連携しました（デモ）');break;
+    case 'gDisconnect':
+      S.gcal.connected=false;S.gcal.account='';S.gcal.events=[];S.gcal.lastSync=null;U.gMsg='';save();toast('連携を解除しました');break;
+    case 'gAdd':
+      var gt=$('#gTitle').value.trim()||'（タイトルなし）',gd=$('#gDate').value,ga=$('#gAll').checked,gs=$('#gS').value,ge=$('#gE').value;
+      if(!gd){U.gMsg='err:日付を選んでください';break;}
+      if(!ga&&(!gs||!ge||ge<=gs)){U.gMsg='err:終了時刻は開始時刻より後にしてください';break;}
+      var ev={id:'G'+(S.gcal.seq++),title:gt,date:gd,allDay:ga,start:ga?'':gs,end:ga?'':ge};
+      S.gcal.events.push(ev);S.gcal.lastSync=Date.now();
+      var ov=overlapBookings(ev);
+      U.gMsg=ov.length?('warn:注意：確定済みの予約（'+ov.map(function(x){return x.name;}).join('、')+'さん）と重なっています。必要なら予約一覧から調整してください。'):'ok:Googleカレンダーに予定を追加しました。この時間は生徒の予約ページから非表示になります。';
+      save();break;
+    case 'gDel':
+      S.gcal.events=S.gcal.events.filter(function(x){return x.id!==d.id;});S.gcal.lastSync=Date.now();U.gMsg='ok:予定を削除しました。この時間は再び予約できるようになります。';save();break;
     case 'addRange':(S.rules[d.d]=S.rules[d.d]||[]).push({s:'19:00',e:'21:00'});save();break;
     case 'delRange':S.rules[d.d].splice(Number(d.i),1);save();break;
     case 'addExc':
@@ -823,13 +1041,21 @@ document.addEventListener('click',function(e){
   window.__evtTarget=e.target;
   act(el.dataset.act,el);
 });
+function doFind(){
+  var em=U.mg.email.trim().toLowerCase(),rf=U.mg.ref.trim().toUpperCase();
+  var b=S.bookings.filter(function(x){return x.email.toLowerCase()===em&&x.ref===rf&&(x.status==='confirmed'||x.status==='completed'||x.status==='cancelled');})[0];
+  if(!b){U.mg.err='mgNotFound';render();return;}
+  U.mg={email:em,ref:rf,id:b.id,mode:'view',err:''};U.tz=b.tz;U.selSlot=null;U.selDate=null;render();
+}
 document.addEventListener('submit',function(e){
   if(e.target.id==='loginForm'){e.preventDefault();doLogin();}
+  if(e.target.id==='mgForm'){e.preventDefault();doFind();}
 });
 document.addEventListener('input',function(e){
   var x=e.target;
   if(x.dataset&&x.dataset.form)U.form[x.dataset.form]=x.value;
   if(x.dataset&&x.dataset.login==='email')U.loginEmail=x.value;
+  if(x.dataset&&x.dataset.mg)U.mg[x.dataset.mg]=x.value;
 });
 document.addEventListener('change',function(e){
   var x=e.target;
@@ -839,7 +1065,9 @@ document.addEventListener('change',function(e){
   }
   if(x.dataset&&x.dataset.bind==='tz'){U.tz=x.value;U.selDate=U.selSlot?localKey(U.selSlot,U.tz):null;render();return;}
   if(x.id==='exType'){var box=$('#exTimes');if(box)box.classList.toggle('hidden',x.value!=='extra');return;}
+  if(x.id==='gAll'){var gb=$('#gTimes');if(gb)gb.classList.toggle('hidden',x.checked);return;}
   if(!U.authed)return;
+  if(x.dataset&&x.dataset.gset){S.gcal[x.dataset.gset]=x.checked;save();toast('保存しました');render();return;}
   if(x.dataset&&x.dataset.rule){
     var p=x.dataset.rule.split('|'),r=S.rules[p[0]][Number(p[1])];
     var old=r[p[2]];r[p[2]]=x.value;
@@ -871,6 +1099,7 @@ setInterval(function(){
 
 /* boot */
 S=loadState();
+if(S&&S.courses&&!S.gcal)S.gcal=freshState().gcal;
 if(!S||!S.courses||!S.courses[0].name||typeof S.courses[0].name!=='object'){S=freshState();U=freshUI();seedBookings();save();}
 else U=freshUI();
 render();
