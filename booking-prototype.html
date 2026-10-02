@@ -237,7 +237,7 @@ dl.kv dd{margin:0;word-break:break-word}
 'use strict';
 var OFFSET=8*3600000, MIN=60000, HOUR=3600000;
 var BUFFER=10*MIN, NOTICE=12*HOUR, HOLD=15*MIN, STEP=30*MIN, HORIZON=28;
-var STORE='jp-booking-proto-v2', LANGKEY='jp-booking-proto-lang', TP='Asia/Taipei';
+var STORE='jp-booking-proto-v3', LANGKEY='jp-booking-proto-lang', TP='Asia/Taipei';
 var DEMO_EMAIL='misheru0512@gmail.com', DEMO_PASS='yasaka6012';
 var ORDER=[1,2,3,4,5,6,0];
 var WDN={zh:['日','一','二','三','四','五','六'],ja:['日','月','火','水','木','金','土'],en:['Sun','Mon','Tue','Wed','Thu','Fri','Sat']};
@@ -257,7 +257,7 @@ zh:{
   s3Title:'你的聯絡資料',fName:'姓名或暱稱',fEmail:'Email（確認信與上課連結會寄到這裡）',fNote:'想讓老師先知道的事（選填）',fNotePh:'例如：目前程度、想考的檢定、想加強的部分',
   errName:'請填寫姓名或暱稱',errEmail:'請填寫正確的 Email，例如 name@example.com',errSlot:'這個時段剛剛被別人預約了，請回上一步重新選擇。',toPay:'前往付款',
   s4Title:'付款',hold:'時段已為你保留，請在 {t} 內完成付款，逾時會自動釋出。',
-  demoNotice:'這是原型：按下付款只會模擬付款成功，不會真的扣款。實際串接綠界或藍新時，會在這一步跳轉到金流頁面。',
+  demoNotice:'這是原型：按下付款只會模擬付款成功，不會真的扣款。實際串接金流時，會在這一步跳轉到付款頁面。',
   payFail:'付款未完成：銀行拒絕這筆交易。你的時段仍保留到倒數結束，可以換一種付款方式再試一次。',
   cvsNote:'真實流程中，超商與 ATM 要繳費後才會確認，保留時間會設得更長（例如 3 天）。這裡直接模擬成功。',
   processing:'處理中…',payBtn:'付款 {price}',simFail:'模擬付款失敗',
@@ -279,7 +279,7 @@ ja:{
   s3Title:'ご連絡先',fName:'お名前（ニックネーム可）',fEmail:'メールアドレス（確認メールとレッスンのリンクをお送りします）',fNote:'先生に事前に伝えたいこと（任意）',fNotePh:'例：現在のレベル、受けたい試験、強化したい分野',
   errName:'お名前を入力してください',errEmail:'正しいメールアドレスを入力してください（例：name@example.com）',errSlot:'この枠はたった今ほかの方が予約しました。前の画面に戻って選び直してください。',toPay:'お支払いへ進む',
   s4Title:'お支払い',hold:'枠を確保しました。{t} 以内にお支払いを完了してください。時間を過ぎると自動的に解放されます。',
-  demoNotice:'これはプロトタイプです。「支払う」を押しても支払い成功を模擬するだけで、実際には課金されません。本番では、この段階で決済ページ（ECPay／NewebPay）に移動します。',
+  demoNotice:'これはプロトタイプです。「支払う」を押しても支払い成功を模擬するだけで、実際には課金されません。本番では、この段階で決済ページに移動します。',
   payFail:'お支払いが完了しませんでした：カード会社に拒否されました。枠はカウントダウン終了まで確保されています。別のお支払い方法でもう一度お試しください。',
   cvsNote:'実際の運用では、コンビニ・ATMは入金確認後に予約が確定するため、確保時間を長め（例：3日）にします。ここでは即成功として扱います。',
   processing:'処理中…',payBtn:'{price}を支払う',simFail:'支払い失敗をシミュレート',
@@ -301,7 +301,7 @@ en:{
   s3Title:'Your details',fName:'Name or nickname',fEmail:'Email (your confirmation and lesson link will be sent here)',fNote:'Anything the teacher should know beforehand (optional)',fNotePh:'e.g. your current level, the exam you are aiming for, what you want to improve',
   errName:'Please enter your name or nickname',errEmail:'Please enter a valid email, e.g. name@example.com',errSlot:'Someone just booked that slot. Please go back and choose another time.',toPay:'Continue to payment',
   s4Title:'Payment',hold:'Your slot is held. Please pay within {t}, or it will be released automatically.',
-  demoNotice:'This is a prototype: pressing Pay only simulates a successful payment and charges nothing. In production this step redirects to the payment page (ECPay / NewebPay).',
+  demoNotice:'This is a prototype: pressing Pay only simulates a successful payment and charges nothing. In production this step redirects to the payment page.',
   payFail:'Payment failed: the card was declined. Your slot is still held until the countdown ends, so you can try another payment method.',
   cvsNote:'In a real setup, convenience-store and ATM payments are confirmed only after you pay, so the hold lasts longer (e.g. 3 days). Here it is treated as instant.',
   processing:'Processing…',payBtn:'Pay {price}',simFail:'Simulate failed payment',
@@ -326,7 +326,7 @@ var DETECTED_NAME={zh:'目前所在地',ja:'現在地',en:'Current location'};
 function $(s){return document.querySelector(s);}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function pad(n){return String(n).padStart(2,'0');}
-function money(n){return 'NT$ '+Number(n).toLocaleString('en-US');}
+function money(n){return '¥'+Number(n).toLocaleString('en-US');}
 
 /* ---------- language ---------- */
 var U;
@@ -338,7 +338,11 @@ function t(k,p){
 }
 function L(o){return (o&&(o[lang()]||o.ja))||'';}
 function wdShort(i){var l=lang();return l==='zh'?'週'+WDN.zh[i]:WDN[l][i];}
-function tzName(tz){return TZNAMES[tz]?TZNAMES[tz][lang()]:DETECTED_NAME[lang()];}
+function tzCity(tz){
+  if(TZNAMES[tz])return TZNAMES[tz][lang()];
+  var seg=tz.split('/');return seg[seg.length-1].replace(/_/g,' ');
+}
+function tzName(tz){return tzCity(tz);}
 function detectLang(){
   try{var s=localStorage.getItem(LANGKEY);if(s&&I18N[s])return s;}catch(e){}
   var n=(navigator.language||'').toLowerCase();
@@ -367,11 +371,21 @@ function fmtDT(ts,tz){
   return lang()==='en'?(p.m+'/'+p.d+' ('+w+') '+localTime(ts,tz)):(p.m+'/'+p.d+'（'+w+'）'+localTime(ts,tz));
 }
 function dayLabel(k){var p=parseYmd(k);return {md:p.m+'/'+p.d,wd:wdShort(wday(k))};}
+var OFFSTR={},OFFMIN={};
 function tzOffset(tz){
+  if(OFFSTR[tz]!==undefined)return OFFSTR[tz];
+  var r='';
   try{
     var parts=dtf(tz,'o',{timeZoneName:'shortOffset'}).formatToParts(new Date());
-    return parts.filter(function(x){return x.type==='timeZoneName';})[0].value.replace('GMT','UTC');
-  }catch(e){return '';}
+    r=parts.filter(function(x){return x.type==='timeZoneName';})[0].value.replace('GMT','UTC');
+  }catch(e){}
+  return (OFFSTR[tz]=r);
+}
+function tzOffsetMin(tz){
+  if(OFFMIN[tz]!==undefined)return OFFMIN[tz];
+  var m=/UTC([+-])(\d{1,2})(?::(\d{2}))?/.exec(tzOffset(tz)),v=0;
+  if(m){v=Number(m[2])*60+Number(m[3]||0);if(m[1]==='-')v=-v;}
+  return (OFFMIN[tz]=v);
 }
 function mmss(ms){ms=Math.max(0,ms);var s=Math.ceil(ms/1000);return pad(Math.floor(s/60))+':'+pad(s%60);}
 
@@ -382,13 +396,13 @@ function save(){try{localStorage.setItem(STORE,JSON.stringify(S));}catch(e){}}
 function freshState(){
   return {
     courses:[
-      {id:'trial',min:50,price:500,
+      {id:'trial',min:50,price:2500,
         name:{ja:'50分 体験レッスン',zh:'50 分鐘試聽課',en:'50-min trial lesson'},
         desc:{ja:'初めての方向け。レベルや目標を一緒に確認します',zh:'第一次上課，一起了解你的程度與學習目標',en:'For first-timers: we check your level and goals together'}},
-      {id:'regular',min:50,price:900,
+      {id:'regular',min:50,price:4500,
         name:{ja:'50分 通常レッスン',zh:'50 分鐘一般課',en:'50-min regular lesson'},
         desc:{ja:'会話・文法・試験対策など、目的に合わせて進めます',zh:'會話、文法、考試準備都可以',en:'Conversation, grammar, exam prep — whatever you need'}},
-      {id:'long',min:80,price:1400,
+      {id:'long',min:80,price:7000,
         name:{ja:'80分 ロングレッスン',zh:'80 分鐘加長課',en:'80-min extended lesson'},
         desc:{ja:'JLPTの作文や面接練習など、じっくり取り組みたい方に',zh:'JLPT 作文、面試練習等需要較長時間的內容',en:'For JLPT writing, interview practice and other longer sessions'}}
     ],
@@ -446,8 +460,45 @@ function slotsFor(course){
 /* ---------- UI state ---------- */
 var detected='Asia/Taipei';
 try{detected=Intl.DateTimeFormat().resolvedOptions().timeZone||detected;new Intl.DateTimeFormat('en-GB',{timeZone:detected});}catch(e){detected='Asia/Taipei';}
-var TZS=['Asia/Taipei','Asia/Tokyo','Asia/Hong_Kong','Asia/Singapore','America/Los_Angeles','America/New_York','Europe/London','Australia/Sydney'];
-if(TZS.indexOf(detected)<0)TZS.unshift(detected);
+var POPULAR=['Asia/Taipei','Asia/Tokyo','Asia/Hong_Kong','Asia/Singapore','America/Los_Angeles','America/New_York','Europe/London','Australia/Sydney'];
+var FALLBACK_ZONES=['Pacific/Honolulu','America/Anchorage','America/Los_Angeles','America/Denver','America/Chicago','America/New_York','America/Toronto','America/Vancouver','America/Mexico_City','America/Sao_Paulo','America/Argentina/Buenos_Aires','Atlantic/Reykjavik','Europe/London','Europe/Paris','Europe/Berlin','Europe/Madrid','Europe/Rome','Europe/Moscow','Europe/Istanbul','Africa/Cairo','Africa/Johannesburg','Africa/Lagos','Africa/Nairobi','Asia/Dubai','Asia/Karachi','Asia/Kolkata','Asia/Dhaka','Asia/Bangkok','Asia/Ho_Chi_Minh','Asia/Jakarta','Asia/Kuala_Lumpur','Asia/Singapore','Asia/Manila','Asia/Hong_Kong','Asia/Shanghai','Asia/Taipei','Asia/Seoul','Asia/Tokyo','Australia/Perth','Australia/Sydney','Pacific/Auckland','Pacific/Fiji','UTC'];
+var REGION_NAMES={
+  Africa:{zh:'非洲',ja:'アフリカ',en:'Africa'},
+  America:{zh:'美洲',ja:'南北アメリカ',en:'Americas'},
+  Antarctica:{zh:'南極洲',ja:'南極',en:'Antarctica'},
+  Arctic:{zh:'北極',ja:'北極',en:'Arctic'},
+  Asia:{zh:'亞洲',ja:'アジア',en:'Asia'},
+  Atlantic:{zh:'大西洋',ja:'大西洋',en:'Atlantic'},
+  Australia:{zh:'澳洲',ja:'オーストラリア',en:'Australia'},
+  Europe:{zh:'歐洲',ja:'ヨーロッパ',en:'Europe'},
+  Indian:{zh:'印度洋',ja:'インド洋',en:'Indian Ocean'},
+  Pacific:{zh:'太平洋',ja:'太平洋',en:'Pacific'},
+  Other:{zh:'其他',ja:'その他',en:'Other'}
+};
+var GROUP_POP={zh:'常用',ja:'よく使う',en:'Popular'};
+var ALL_ZONES=(function(){
+  var z=[];
+  try{if(Intl.supportedValuesOf)z=Intl.supportedValuesOf('timeZone').slice();}catch(e){}
+  if(!z||z.length<20)z=FALLBACK_ZONES.slice();
+  if(z.indexOf('UTC')<0)z.push('UTC');
+  return z.filter(function(x){try{new Intl.DateTimeFormat('en-GB',{timeZone:x});return true;}catch(e){return false;}});
+})();
+function tzOptionsHtml(sel){
+  var l=lang(),usedSel=false;
+  function opt(z){
+    var on=(!usedSel&&z===sel);if(on)usedSel=true;
+    return '<option value="'+esc(z)+'"'+(on?' selected':'')+'>('+esc(tzOffset(z))+') '+esc(tzName(z))+'</option>';
+  }
+  var pop=POPULAR.slice();if(pop.indexOf(detected)<0)pop.unshift(detected);
+  var html='<optgroup label="'+esc(GROUP_POP[l])+'">'+pop.map(opt).join('')+'</optgroup>',groups={};
+  ALL_ZONES.forEach(function(z){var r=z.split('/')[0];if(!REGION_NAMES[r])r='Other';(groups[r]=groups[r]||[]).push(z);});
+  Object.keys(REGION_NAMES).forEach(function(r){
+    var g=groups[r];if(!g)return;
+    g.sort(function(a,b){return tzOffsetMin(a)-tzOffsetMin(b)||(a<b?-1:1);});
+    html+='<optgroup label="'+esc(REGION_NAMES[r][l])+'">'+g.map(opt).join('')+'</optgroup>';
+  });
+  return html;
+}
 function freshUI(){
   return {role:'student',lang:detectLang(),authed:false,fails:0,lockUntil:0,loginErr:'',loginEmail:'',
     step:1,courseId:'trial',tz:detected,selDate:null,selSlot:null,form:{name:'',email:'',note:''},errors:{},holdId:null,method:'card',paying:false,payError:false,doneId:null,
@@ -491,7 +542,7 @@ function s2(){
   if(U.selSlot&&slots.indexOf(U.selSlot)<0)U.selSlot=null;
   if(U.selSlot&&!U.selDate)U.selDate=localKey(U.selSlot,U.tz);
   if(!U.selDate||!groups[U.selDate])U.selDate=keys[0]||null;
-  var tzOpts=TZS.map(function(z){return '<option value="'+esc(z)+'"'+(z===U.tz?' selected':'')+'>'+esc(tzName(z))+'（'+esc(tzOffset(z))+'）</option>';}).join('');
+  var tzOpts=tzOptionsHtml(U.tz);
   var body;
   if(!keys.length){
     body='<div class="empty">'+t('noSlots')+'</div>';
@@ -504,7 +555,7 @@ function s2(){
     }).join('')+'</div>';
   }
   return '<div class="panel"><h2>'+t('s2Title')+'</h2>'+
-    '<div class="field" style="max-width:340px"><label for="tzSel">'+t('tzLabel')+'</label><select id="tzSel" data-bind="tz">'+tzOpts+'</select></div>'+body+
+    '<div class="field" style="max-width:420px"><label for="tzSel">'+t('tzLabel')+'</label><select id="tzSel" data-bind="tz">'+tzOpts+'</select></div>'+body+
     '<div class="actions"><button class="btn" data-act="back">'+t('back')+'</button><button class="btn primary" data-act="goInfo"'+(U.selSlot?'':' disabled')+'>'+t('next')+'</button></div></div>';
 }
 function s3(){
@@ -564,7 +615,7 @@ function renderLogin(){
     '<div class="field"><label for="lgPass">パスワード</label><input type="password" id="lgPass" autocomplete="current-password"'+(locked?' disabled':'')+'></div>'+
     msg+
     '<div class="row" style="justify-content:space-between;margin-top:14px"><button type="submit" class="btn primary"'+(locked?' disabled':'')+'>ログイン</button><button type="button" class="lnk" data-act="forgot">パスワードを忘れた場合</button></div></form>'+
-    '<div class="demo">デモ用アカウント：<br>メール <code>'+DEMO_EMAIL+'</code><br>パスワード <code>'+DEMO_PASS+'</code><br>※実際のシステムでは、認証はサーバー側で行います（パスワードは暗号化して保存し、ログインしていない人はデータの読み書きができません）。</div></div>';
+    '</div>';
 }
 
 /* ---------- teacher views (Japanese) ---------- */
@@ -633,14 +684,14 @@ function rulesHtml(){
     '<ul class="exlist">'+(exs.length?exs.map(function(e){var dl=dayLabel(e.date);return '<li><span>'+dl.md+'（'+dl.wd+'）'+(e.type==='closed'?'お休み':'臨時 '+e.start+'–'+e.end)+'</span><button class="lnk" data-act="delExc" data-id="'+e.id+'">削除</button></li>';}).join(''):'<li class="muted">例外の日はまだありません</li>')+'</ul></div></div>';
 }
 function coursesHtml(){
-  return '<div class="panel"><h3>コースと料金</h3><p class="muted">料金は新台湾ドル（NT$）です。日本・海外の生徒がクレジットカードで支払う場合は、カード会社が自動で両替します。生徒の予約ページに表示される名前は、言語ごとに設定できます。すでに成立した予約には当時の料金が残ります。</p>'+
+  return '<div class="panel"><h3>コースと料金</h3><p class="muted">料金は日本円で設定します。生徒の予約ページに表示される名前は、言語ごとに設定できます。すでに成立した予約には当時の料金が残ります。</p>'+
     S.courses.map(function(c){
       return '<div class="cblock"><div class="cgrid">'+
         '<div class="field" style="margin:0"><label for="cnj_'+c.id+'">コース名（日本語）</label><input type="text" id="cnj_'+c.id+'" value="'+esc(c.name.ja)+'" data-course="'+c.id+'|name|ja"></div>'+
         '<div class="field" style="margin:0"><label for="cnz_'+c.id+'">コース名（繁體中文）</label><input type="text" id="cnz_'+c.id+'" value="'+esc(c.name.zh)+'" data-course="'+c.id+'|name|zh"></div>'+
         '<div class="field" style="margin:0"><label for="cne_'+c.id+'">コース名（English）</label><input type="text" id="cne_'+c.id+'" value="'+esc(c.name.en)+'" data-course="'+c.id+'|name|en"></div>'+
         '<div class="field" style="margin:0"><label for="cm_'+c.id+'">時間（分）</label><input type="number" id="cm_'+c.id+'" min="20" max="180" step="5" value="'+c.min+'" data-course="'+c.id+'|min"></div>'+
-        '<div class="field" style="margin:0"><label for="cpz_'+c.id+'">料金（NT$）</label><input type="number" id="cpz_'+c.id+'" min="0" step="50" value="'+c.price+'" data-course="'+c.id+'|price"></div>'+
+        '<div class="field" style="margin:0"><label for="cpz_'+c.id+'">料金（円）</label><input type="number" id="cpz_'+c.id+'" min="0" step="100" value="'+c.price+'" data-course="'+c.id+'|price"></div>'+
         '</div></div>';
     }).join('')+'</div>';
 }
